@@ -19,6 +19,16 @@ typedef struct {
 	float OutMax;
 	float OutMin;
 } PID_t;
+
+typedef struct {
+	float DtSec;
+	float TargetKp;
+	float TargetMax;
+	float RateKp;
+	float RateKd;
+	float PwmMax;
+} TurnRate_t;
+
 extern PID_t speed_left;
 extern PID_t speed_right;
 extern PID_t turn_speed_left;
@@ -26,6 +36,7 @@ extern PID_t turn_speed_right;
 extern PID_t Turn;
 extern PID_t Straight;
 extern PID_t Xunji;
+extern TurnRate_t TurnRate;
 extern int Basic_Speed;
 void control_reset_runtime_state(void);
 
@@ -38,5 +49,6 @@ float Place_Control(PID_t *p);
 // float PID_Control(float NowPoint, float SetPoint, float *TURN_PID);
 void PID_Update(PID_t *p);
 void Turn_In_Place(float target_angle);
+void Turn_In_Place_Rate(float target_angle);
 void Keep_Angle_Straight(float target_angle, int base_speed); 
 #endif

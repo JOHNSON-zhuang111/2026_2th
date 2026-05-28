@@ -108,7 +108,7 @@ void mode_2(void)
     switch (state) {
         case 0:
             // A -> B：按 0 度航向直行，检测到黑线后进入圆弧循迹。
-            Keep_Angle_Straight(angle_ab, 80);
+            Keep_Angle_Straight(angle_ab, 100);
             if (any_black()) {
                 stable_cnt++;
                 if (stable_cnt > 3) {
@@ -143,7 +143,7 @@ void mode_2(void)
             
         case 2:
             // C -> D：按 180 度航向直行，检测到黑线后进入下一段圆弧。
-            Keep_Angle_Straight(angle_cd, 80);
+            Keep_Angle_Straight(angle_cd, 100);
             if (any_black()) {
                 stable_cnt++;
                 if (stable_cnt > 3) {

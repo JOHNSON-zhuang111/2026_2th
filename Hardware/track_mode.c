@@ -105,7 +105,7 @@ void Track_Mode6Enhanced(void)
 
         case TRACK_MODE_SHARP_TURN:
             /* 锐角转弯用陀螺仪闭环，角度连续稳定后退出。 */
-            Turn_In_Place(turn_target_angle);
+            Turn_In_Place_Rate(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if ((diff > -3.0f) && (diff < 3.0f)) {

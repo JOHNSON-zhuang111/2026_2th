@@ -64,6 +64,16 @@ PID_t Straight ={
     .Kd=3.0,    
     .OutMax=50, .OutMin=-50,
 	};
+
+// 原地转向角速度内环参数，主要用于锐角急转。
+TurnRate_t TurnRate ={
+    .DtSec=0.02f,      // 控制周期，当前定时器约 20ms。
+    .TargetKp=3.0f,    // 角度误差转换为目标角速度的比例。
+    .TargetMax=120.0f, // 目标角速度最大值，防止起转过猛。
+    .RateKp=0.22f,     // 角速度内环 P 参数。
+    .RateKd=0.04f,     // 角速度内环 D 参数，用于抑制过冲。
+    .PwmMax=45.0f,     // 角速度内环输出的最大左右轮差速。
+};
 static void PID_ResetRuntime(PID_t *p)
 {
 	p->Target = 0.0f;
@@ -193,7 +203,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	if(Speed_Out_L>DRIVE_PWM_LIMIT){Speed_Out_L=DRIVE_PWM_LIMIT;}
 	if(Speed_Out_L<-DRIVE_PWM_LIMIT){Speed_Out_L=-DRIVE_PWM_LIMIT;}
 	// printf("%.2f,%.2f,%.2f\n",speed_left.Out,Speed_Out_L,speed_left.Actual);
-	//Set_PWM_L(Speed_Out_L);
+	Set_PWM_L((int)Speed_Out_L);
 	
 		
 	
@@ -203,7 +213,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	 if(Speed_Out_R>DRIVE_PWM_LIMIT){Speed_Out_R=DRIVE_PWM_LIMIT;}
 	 if(Speed_Out_R<-DRIVE_PWM_LIMIT){Speed_Out_R=-DRIVE_PWM_LIMIT;}
 	//printf("%.2f,%.2f,%.2f\n",speed_right.Out,Speed_Out_R,speed_right.Actual);
-	//Set_PWM_R(Speed_Out_R);
+	Set_PWM_R((int)Speed_Out_R);
 	//printf("%.2f,%.2f\n",speed_left.Out,speed_right.Out);
 	//printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
 	//printf("%.3f, %.3f, %.3f, %.3f\n", speed_left.Kp, speed_left.Ki,speed_right.Kp, speed_right.Ki);
@@ -402,6 +412,93 @@ void Turn_In_Place(float target_angle)
 		
 	}
 	
+}
+
+// 原地转向：角度外环 + 角速度内环，优先用于锐角急转。
+void Turn_In_Place_Rate(float target_angle)
+{
+    static u8 initialized = 0U;
+    static float last_yaw = 0.0f;
+    static float last_target_angle = 999.0f;
+    static float last_rate_error = 0.0f;
+
+    speed_left.Kp = turn_speed_left.Kp; speed_left.Ki = turn_speed_left.Ki; speed_left.Kd = turn_speed_left.Kd;
+    speed_right.Kp = turn_speed_right.Kp; speed_right.Ki = turn_speed_right.Ki; speed_right.Kd = turn_speed_right.Kd;
+
+    Gyro_Struct *JY61P_Data = get_angle();
+    float current_yaw = JY61P_Data->z;
+    float target_change = target_angle - last_target_angle;
+    if (target_change < 0.0f) {
+        target_change = -target_change;
+    }
+
+    if ((initialized == 0U) || (target_change > 0.5f)) {
+        initialized = 1U;
+        last_yaw = current_yaw;
+        last_target_angle = target_angle;
+        last_rate_error = 0.0f;
+    }
+
+    // 外环：角度误差越大，目标角速度越大；接近目标时自动降速。
+    float angle_error = angle_diff(target_angle, current_yaw);
+    float abs_angle_error = (angle_error < 0.0f) ? -angle_error : angle_error;
+    float target_rate = angle_error * TurnRate.TargetKp;
+    float target_rate_limit = TurnRate.TargetMax;
+
+    if (abs_angle_error < 30.0f) {
+        target_rate_limit = 80.0f;
+    }
+    if (abs_angle_error < 15.0f) {
+        target_rate_limit = 45.0f;
+    }
+    if (abs_angle_error < 6.0f) {
+        target_rate_limit = 20.0f;
+    }
+
+    if (target_rate > target_rate_limit) {
+        target_rate = target_rate_limit;
+    }
+    if (target_rate < -target_rate_limit) {
+        target_rate = -target_rate_limit;
+    }
+
+    // 内环：用相邻两次 yaw 差分估算当前角速度，再做 PD 修正。
+    float yaw_delta = angle_diff(current_yaw, last_yaw);
+    float current_rate = yaw_delta / TurnRate.DtSec;
+    float rate_error = target_rate - current_rate;
+    float turn_out = TurnRate.RateKp * rate_error + TurnRate.RateKd * (rate_error - last_rate_error);
+    float turn_out_limit = TurnRate.PwmMax;
+
+    if (abs_angle_error < 15.0f) {
+        turn_out_limit = 25.0f;
+    }
+    if (abs_angle_error < 6.0f) {
+        turn_out_limit = 12.0f;
+    }
+
+    if (turn_out > turn_out_limit) {
+        turn_out = turn_out_limit;
+    }
+    if (turn_out < -turn_out_limit) {
+        turn_out = -turn_out_limit;
+    }
+
+    // 角度接近且角速度很小，认为转向基本停稳，清掉速度环残留。
+    if ((abs_angle_error < 1.0f) && (current_rate > -8.0f) && (current_rate < 8.0f)) {
+        turn_out = 0.0f;
+        last_rate_error = 0.0f;
+        speed_left.Out = 0.0f;
+        speed_right.Out = 0.0f;
+        Turn.Out = 0.0f;
+        Turn.Error0 = 0.0f;
+        Turn.Error1 = 0.0f;
+        Turn.Error2 = 0.0f;
+    }
+
+    Left_Speed = -turn_out;
+    Right_Speed = turn_out;
+    last_rate_error = rate_error;
+    last_yaw = current_yaw;
 }
 
 // ==========================================
