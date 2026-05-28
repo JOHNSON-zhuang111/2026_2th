@@ -192,7 +192,9 @@ void mode_3(void)
     static uint32_t stable_cnt = 0;  // 条件稳定计数，用来滤掉抖动。
 
     float target_angle_C = 0.0f;
-    float target_angle_D = -141.3f;
+    float entry_angle_C = -45.0f;    // 到 C 点后先转到这个固定入弧角，再进入圆弧循迹；需要按实车 yaw 方向微调。
+    float target_angle_D = 90.0f;
+    float entry_angle_D = 135.0f;    // 到 D 点后先转到这个固定入弧角，再进入 D -> A 圆弧循迹；需要按实车 yaw 方向微调。
 
     switch (state) {
         case 0:
@@ -201,7 +203,7 @@ void mode_3(void)
             delay_cnt++;
             if (delay_cnt > 100 && any_black()) {
                 stable_cnt++;
-                if (stable_cnt > 2) {
+                if (stable_cnt > 1) {
                     point_prompt_once();
                     state = 1;
                     delay_cnt = 0;
@@ -213,33 +215,16 @@ void mode_3(void)
             break;
 
         case 1:
-            // C -> B：圆弧循迹，延时后检测无黑线作为离开圆弧的依据。
-            Xunji_Speed();
-            delay_cnt++;
-            if (delay_cnt > 100 && no_black()) {
-                stable_cnt++;
-                if (stable_cnt > 2) { 
-                    point_prompt_once();
-                    state = 2;
-                    delay_cnt = 0;
-                    stable_cnt = 0;
-                }
-            } else if (delay_cnt > 50) {
-                stable_cnt = 0;
-            }
-            break;
-
-        case 2:
-            // 原地转向 D：陀螺仪角度误差连续稳定在阈值内后进入直行。
-            Turn_In_Place(target_angle_D);
+            // 到 C 点后先转到固定入弧角度，避免斜着压到圆弧入口后直接丢线。
+            Turn_In_Place(entry_angle_C);
             {
                 Gyro_Struct *JY61P_Data = get_angle();
-                float diff = angle_diff(target_angle_D, JY61P_Data->z);
+                float diff = angle_diff(entry_angle_C, JY61P_Data->z);
 
                 if (diff > -3.0f && diff < 3.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 2) {
-                        state = 3;
+                    if (stable_cnt > 1) {
+                        state = 2;
                         delay_cnt = 0;
                         stable_cnt = 0;
                     }
@@ -249,15 +234,15 @@ void mode_3(void)
             }
             break;
 
-        case 3:
-            // B -> D：按 target_angle_D 直行，延时后检测黑线作为到达 D 的依据。
-            Keep_Angle_Straight(target_angle_D, 80);
+        case 2:
+            // C -> B：圆弧循迹，延时后检测无黑线作为离开圆弧的依据。
+            Xunji_Speed();
             delay_cnt++;
-            if (delay_cnt > 100 && any_black()) {
+            if (delay_cnt > 100 && no_black()) {
                 stable_cnt++;
-                if (stable_cnt > 2) {
+                if (stable_cnt > 2) { 
                     point_prompt_once();
-                    state = 4;
+                    state = 3;
                     delay_cnt = 0;
                     stable_cnt = 0;
                 }
@@ -266,7 +251,64 @@ void mode_3(void)
             }
             break;
 
+        case 3:
+            // 原地转向 D：陀螺仪角度误差连续稳定在阈值内后进入直行。
+            Turn_In_Place(target_angle_D);
+            {
+                Gyro_Struct *JY61P_Data = get_angle();
+                float diff = angle_diff(target_angle_D, JY61P_Data->z);
+
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 2) {
+                        state = 4;
+                        delay_cnt = 0;
+                        stable_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+
         case 4:
+            // B -> D：按 target_angle_D 直行，延时后检测黑线作为到达 D 的依据。
+            Keep_Angle_Straight(target_angle_D, 80);
+            delay_cnt++;
+            if (delay_cnt > 100 && any_black()) {
+                stable_cnt++;
+                if (stable_cnt > 1) {
+                    point_prompt_once();
+                    state = 5;
+                    delay_cnt = 0;
+                    stable_cnt = 0;
+                }
+            } else if (delay_cnt > 50) {
+                stable_cnt = 0;
+            }
+            break;
+
+        case 5:
+            // 到 D 点后先转到固定入弧角度，避免斜着压到左侧圆弧入口后直接丢线。
+            Turn_In_Place(entry_angle_D);
+            {
+                Gyro_Struct *JY61P_Data = get_angle();
+                float diff = angle_diff(entry_angle_D, JY61P_Data->z);
+
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 1) {
+                        state = 6;
+                        delay_cnt = 0;
+                        stable_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+
+        case 6:
             // D -> A：圆弧循迹，离开黑线后认为回到 A 点附近。
             Xunji_Speed();
             delay_cnt++;
@@ -274,7 +316,7 @@ void mode_3(void)
                 stable_cnt++;
                 if (stable_cnt > 2) {
                     point_prompt_once();
-                    state = 5;
+                    state = 7;
                     stable_cnt = 0;
                 }
             } else if (delay_cnt > 100) {
@@ -282,7 +324,7 @@ void mode_3(void)
             }
             break;
 
-        case 5:
+        case 7:
             // 路线完成，清空控制器状态并停车。
             control_reset_runtime_state();
             Set_PWM_L(0);
