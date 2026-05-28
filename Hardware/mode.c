@@ -45,7 +45,7 @@ static void point_prompt_once(void)
     LED_Toggle();
 }
 
-static float normalize_angle(float angle)
+float normalize_angle(float angle)
 {
     // 将角度限制到 -180~180，避免陀螺仪跨越边界时误差突变。
     while (angle > 180.0f) {
@@ -57,7 +57,7 @@ static float normalize_angle(float angle)
     return angle;
 }
 
-static float angle_diff(float target_angle, float current_angle)
+float angle_diff(float target_angle, float current_angle)
 {
     // 计算最短方向的角度误差。
     return normalize_angle(target_angle - current_angle);

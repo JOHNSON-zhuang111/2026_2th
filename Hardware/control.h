@@ -26,6 +26,7 @@ extern PID_t turn_speed_right;
 extern PID_t Turn;
 extern PID_t Straight;
 extern PID_t Xunji;
+extern int Basic_Speed;
 void control_reset_runtime_state(void);
 
 void control(void);

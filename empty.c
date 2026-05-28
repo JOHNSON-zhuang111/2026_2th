@@ -2,7 +2,7 @@
 
 static volatile u8 control_tick_pending = 0U;
 
-u8 set_quanshu=1;//设置圈数
+//u8 set_quanshu=1;//设置圈数
 u8 car_started = 0U; // 小车启动标志位（中断与主循环共享）
 u8 task_mode = 0U;   // 题目的档位，1-4档
 Gyro_Struct *JY61P_Data ; // 全局陀螺仪数据指针，供中断和主循环共用

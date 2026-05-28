@@ -125,10 +125,10 @@ void control(void)
 			mode_5();
 			break;
 		case 6U:
-			mode_6();
+			Track_Mode6Enhanced();
 			break;
 		default:
-			mode_6();
+			Track_Mode6Enhanced();
 			break;
 	}
     

@@ -12,4 +12,6 @@ void mode_6(void);
 u8 mode_run_selected(void);
 void mode_reset_runtime_state(void);
 u8 allwhite(void);
+float normalize_angle(float angle);
+float angle_diff(float target_angle, float current_angle);
 #endif
