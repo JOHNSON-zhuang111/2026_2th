@@ -1,0 +1,25 @@
+# CCS / TI build output
+Debug/
+Release/
+*.out
+*.hex
+*.map
+*_linkInfo.xml
+*.o
+*.d
+*.d_raw
+*.opt
+*.cmd.genlibs
+Event.dot
+
+# clangd / editor caches
+.cache/
+**/.clangd/.cache/
+compile_commands.json
+
+# Logs
+*.log
+
+# Local IDE state
+.theia/
+.vscode/*.log
