@@ -273,7 +273,7 @@ void mode_3(void)
 
         case 4:
             // B -> D：按 target_angle_D 直行，延时后检测黑线作为到达 D 的依据。
-            Keep_Angle_Straight(target_angle_D, 80);
+            Keep_Angle_Straight(target_angle_D, 100);
             delay_cnt++;
             if (delay_cnt > 100 && any_black()) {
                 stable_cnt++;
@@ -349,7 +349,9 @@ void mode_4(void)
     static uint8_t lap_count = 0;    // 已完成圈数。
     
     float target_angle_C = 0.0f;
-    float target_angle_D = -141.3f;
+    float entry_angle_C = -45.0f;    // 到 C 点后先转到固定入弧角，再进入 C -> B 圆弧循迹。
+    float target_angle_D = 90.0f;
+    float entry_angle_D = 135.0f;    // 到 D 点后先转到固定入弧角，再进入 D -> A 圆弧循迹。
     
     switch (state) {
         case 0:
@@ -370,14 +372,34 @@ void mode_4(void)
             break;
             
         case 1:
-            // 2. C -> B：圆弧循迹，离开黑线后准备转向。
+            // 2. 到 C 点后先转到固定入弧角度，避免斜着压到圆弧入口后丢线。
+            Turn_In_Place(entry_angle_C);
+            {
+                Gyro_Struct *JY61P_Data = get_angle();
+                float diff = angle_diff(entry_angle_C, JY61P_Data->z);
+
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 1) {
+                        state = 2;
+                        delay_cnt = 0;
+                        stable_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+
+        case 2:
+            // 3. C -> B：圆弧循迹，离开黑线后准备转向。
             Xunji_Speed();
             delay_cnt++;
             if (delay_cnt > 50 && no_black()) {
                 stable_cnt++;
                 if (stable_cnt > 2) {
                     point_prompt_once();
-                    state = 2;
+                    state = 3;
                     delay_cnt = 0;
                     stable_cnt = 0;
                 }
@@ -386,8 +408,8 @@ void mode_4(void)
             }
             break;
             
-        case 2:
-            // 3. 原地转向 D，角度稳定后进入 B -> D 直行段。
+        case 3:
+            // 4. 原地转向 D，角度稳定后进入 B -> D 直行段。
             Turn_In_Place(target_angle_D);
             {
                 Gyro_Struct *JY61P_Data = get_angle();
@@ -396,7 +418,7 @@ void mode_4(void)
                 if (diff > -3.0f && diff < 3.0f) {
                     stable_cnt++;
                     if (stable_cnt > 2) {
-                        state = 3;
+                        state = 4;
                         delay_cnt = 0;
                         stable_cnt = 0;
                     }
@@ -406,15 +428,15 @@ void mode_4(void)
             }
             break;
             
-        case 3:
-            // 4. B -> D：沿 target_angle_D 直行到 D。
+        case 4:
+            // 5. B -> D：沿 target_angle_D 直行到 D。
             Keep_Angle_Straight(target_angle_D, 80);
             delay_cnt++;
             if (delay_cnt > 50 && any_black()) {
                 stable_cnt++;
                 if (stable_cnt > 2) {
                     point_prompt_once();
-                    state = 4;
+                    state = 5;
                     delay_cnt = 0;
                     stable_cnt = 0;
                 }
@@ -423,8 +445,28 @@ void mode_4(void)
             }
             break;
             
-        case 4:
-            // 5. D -> A：圆弧循迹回到 A，完成一圈后累计 lap_count。
+        case 5:
+            // 6. 到 D 点后先转到固定入弧角度，避免斜着压到左侧圆弧入口后丢线。
+            Turn_In_Place(entry_angle_D);
+            {
+                Gyro_Struct *JY61P_Data = get_angle();
+                float diff = angle_diff(entry_angle_D, JY61P_Data->z);
+
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 1) {
+                        state = 6;
+                        delay_cnt = 0;
+                        stable_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+
+        case 6:
+            // 7. D -> A：圆弧循迹回到 A，完成一圈后累计 lap_count。
             Xunji_Speed();
             delay_cnt++;
             if (delay_cnt > 50 && no_black()) {
@@ -435,7 +477,7 @@ void mode_4(void)
                     delay_cnt = 0;
                     stable_cnt = 0;
                     if (lap_count >= 3) {
-                        state = 5;
+                        state = 7;
                     } else {
                         state = 0;
                     }
@@ -445,7 +487,7 @@ void mode_4(void)
             }
             break;
             
-        case 5:
+        case 7:
             // 三圈完成，清空控制器状态并停车。
             control_reset_runtime_state();
             Set_PWM_L(0);

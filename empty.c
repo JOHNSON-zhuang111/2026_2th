@@ -96,30 +96,6 @@ void TIMER_0_INST_IRQHandler(void)
 	}
 }
 
-#if 0
-static void TIMER_0_INST_IRQHandler_old(void)
-{
-    if(DL_TimerA_getPendingInterrupt(TIMER_0_INST))
-    {
-        if(DL_TIMER_IIDX_ZERO)
-        {
-			//  LED_Flash(100);//测试是否可以进入中断
-			//control();
-			control_tick_pending = 1U;
-			return;
-			if ( car_started == 1 ) // 只有按键按下后才启动循迹控制
-			{
-				control();
-			}
-			else {
-				Set_PWM_L(0); // 没有启动前保持电机不转
-				Set_PWM_R(0);
-			}
-    	}
-	}
-}
-
-#endif
 
 void UART0_IRQHandler(void)
 {
