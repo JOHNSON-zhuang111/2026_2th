@@ -60,6 +60,48 @@
                 "_priority_=",
                 "_task_="
             ]
+        },
+        {
+            "name": "STC32G12K128",
+            "cStandard": "c89",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x86",
+            "includePath": [
+                "D:/Keil_v5/C251/INC",
+                "D:/Keil_v5/C251/INC/STC",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/Libraries/libraries",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/Libraries/seekfree_libraries",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/Libraries/seekfree_peripheral",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/22-Brushless Electric Regulating Demo/CODE",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/22-Brushless Electric Regulating Demo/USER/inc",
+                "d:/A.SmartCar/STC32G12K128_BLDC_Project-master/STC32G12K128_BLDC_Project-master/【例程】控制无刷电机的示例/STC32G12K128/22-Brushless Electric Regulating Demo/USER/src"
+            ],
+            "defines": [
+                "__C251__",
+                "__VSCODE_C251__",
+                "reentrant=",
+                "compact=",
+                "small=",
+                "large=",
+                "data=",
+                "idata=",
+                "pdata=",
+                "bdata=",
+                "edata=",
+                "xdata=",
+                "code=",
+                "bit=char",
+                "sbit=char",
+                "sfr=char",
+                "sfr16=int",
+                "sfr32=int",
+                "interrupt=",
+                "using=",
+                "far=",
+                "_at_=",
+                "_priority_=",
+                "_task_="
+            ]
         }
     ],
     "version": 4
