@@ -123,7 +123,8 @@ void control(void)
 			Turn_In_Place(90);
 			break;
 		case 2U:
-			mode_2();
+			// mode_2();
+            Xunji_Speed();
 			break;
 		case 3U:
 			mode_3();
@@ -135,7 +136,7 @@ void control(void)
 			mode_5();
 			break;
 		case 6U:
-			Track_Mode6Enhanced();
+			mode_6();
 			break;
 		default:
 			Track_Mode6Enhanced();
@@ -202,7 +203,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
  	Speed_Out_L=speed_left.Out;
 	if(Speed_Out_L>DRIVE_PWM_LIMIT){Speed_Out_L=DRIVE_PWM_LIMIT;}
 	if(Speed_Out_L<-DRIVE_PWM_LIMIT){Speed_Out_L=-DRIVE_PWM_LIMIT;}
-	// printf("%.2f,%.2f,%.2f\n",speed_left.Out,Speed_Out_L,speed_left.Actual);
+	
 	Set_PWM_L((int)Speed_Out_L);
 	
 		
@@ -290,7 +291,7 @@ void PID_Update(PID_t *p)
 	if (p->Out > p->OutMax) { p->Out = p->OutMax; }
 	if (p->Out < p->OutMin) { p->Out = p->OutMin; }
 }
-/************************差速计算***************************/
+/************************循迹差速计算***************************/
 /**
  * @brief 速度差异计算函数
  * @note 根据转向控制量调整左右轮速度，实现转向功能

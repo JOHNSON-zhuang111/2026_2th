@@ -77,7 +77,7 @@ float Calculate_Motor_RPM(int encoder_count, int sample_time_ms)
 		//更换电机需修改此处参数
     const int ENCODER_LINES = 13;        // 编码器线数 (每转13个脉冲)
     const int MULTIPLY_FACTOR = 2;       // 2倍频系数 (只检测上升沿)
-    const int GEAR_RATIO = 30;           // 减速比 30:1     
+    const int GEAR_RATIO = 28;           // 减速比 28:1     
    
     // 计算每转的脉冲数
     int pulses_per_revolution = ENCODER_LINES * MULTIPLY_FACTOR; 

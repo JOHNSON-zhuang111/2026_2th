@@ -75,7 +75,7 @@ int Error_Calculate(void)
     // 计算误差（中间4、5因position=0，不影响结果）
     err = active_count ? (active_sum * SCALE_FACTOR) / active_count : 0;	
     err = err * Right_err();				// 直角偏差放大
-    printf("err:%d\r\n", err);              // 串口打印误差值
+    //printf("err:%d\r\n", err);              // 串口打印误差值
     if (!active_count) {
         err = last_valid_err;
     } else if (err != 0) {
