@@ -53,7 +53,7 @@ PID_t Xunji ={
     .OutMax=30, .OutMin=-30,
 	};
 PID_t Turn ={
-    .Kp=3.3,    // 恢复为较温和的比例
+    .Kp=2.0,    // 恢复为较温和的比例
     .Ki=0.0,    
     .Kd=1.0,    // 保留适度微分阻尼
     .OutMax=50, .OutMin=-50, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
@@ -127,7 +127,8 @@ void control(void)
             Xunji_Speed();
 			break;
 		case 3U:
-			mode_3();
+			// mode_3();
+			Keep_Angle_Straight(0.0f, 50);
 			break;
 		case 4U:
 			mode_4();
@@ -196,15 +197,13 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	Get_Encoder_countB = Get_Encoder_countA = 0;
 
 
-
-    
     speed_left.Target=Left_Speed; //转速目标值
 	PID_Update(&speed_left);
  	Speed_Out_L=speed_left.Out;
 	if(Speed_Out_L>DRIVE_PWM_LIMIT){Speed_Out_L=DRIVE_PWM_LIMIT;}
 	if(Speed_Out_L<-DRIVE_PWM_LIMIT){Speed_Out_L=-DRIVE_PWM_LIMIT;}
 	
-	Set_PWM_L((int)Speed_Out_L);
+	Set_PWM_L(Speed_Out_L);
 	
 		
 	
@@ -214,9 +213,9 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	 if(Speed_Out_R>DRIVE_PWM_LIMIT){Speed_Out_R=DRIVE_PWM_LIMIT;}
 	 if(Speed_Out_R<-DRIVE_PWM_LIMIT){Speed_Out_R=-DRIVE_PWM_LIMIT;}
 	//printf("%.2f,%.2f,%.2f\n",speed_right.Out,Speed_Out_R,speed_right.Actual);
-	Set_PWM_R((int)Speed_Out_R);
+	Set_PWM_R(Speed_Out_R);
 	//printf("%.2f,%.2f\n",speed_left.Out,speed_right.Out);
-	//printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
+	printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
 	//printf("%.3f, %.3f, %.3f, %.3f\n", speed_left.Kp, speed_left.Ki,speed_right.Kp, speed_right.Ki);
 	//printf("%.3f, %.3f\n", Turn.Kp, Turn.Kd);
 	//printf("%d\n",Basic_Speed );
@@ -351,7 +350,7 @@ void Turn_In_Place(float target_angle)
 
     // 【方案2：动态目标限幅 (虚拟目标点)】
     // 使得目标角度始终只超前实际角度一小段距离，避免产生大阶跃误差
-    float max_lead = 15.0f; // 相对放宽一点引导角，由于已经限制了 OutMax ，不用担心过载
+    float max_lead = 25.0f; // 相对放宽一点引导角，由于已经限制了 OutMax ，不用担心过载
     float real_diff = target_angle - Turn.Actual;
     
     // 处理 180 到 -180 的临界跳变
@@ -379,12 +378,13 @@ void Turn_In_Place(float target_angle)
 	//5. 靠近目标角时自动降速，避免惯性冲过头
 	{
 		float abs_err = ABS(real_diff);
-		float out_limit = 30.0f;
+		float out_limit = 45.0f;
 
-		if(abs_err < 45.0f) out_limit = 18.0f;
-		if(abs_err < 20.0f) out_limit = 10.0f;
-		if(abs_err < 10.0f) out_limit = 6.0f;
-		if(abs_err < 5.0f)  out_limit = 3.0f;
+		if(abs_err < 60.0f) out_limit = 35.0f;
+		if(abs_err < 30.0f) out_limit = 25.0f;
+		if(abs_err < 15.0f) out_limit = 15.0f;
+		if(abs_err < 8.0f)  out_limit = 8.0f;
+		if(abs_err < 4.0f)  out_limit = 4.0f;
 
 		if(Turn_Out > out_limit) Turn_Out = out_limit;
 		if(Turn_Out < -out_limit) Turn_Out = -out_limit;
