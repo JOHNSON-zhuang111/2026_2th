@@ -127,8 +127,8 @@ void control(void)
             Xunji_Speed();
 			break;
 		case 3U:
-			// mode_3();
-			Keep_Angle_Straight(0.0f, 50);
+			mode_3();
+			// Keep_Angle_Straight(0.0f, 50);
 			break;
 		case 4U:
 			mode_4();
@@ -215,7 +215,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	//printf("%.2f,%.2f,%.2f\n",speed_right.Out,Speed_Out_R,speed_right.Actual);
 	Set_PWM_R(Speed_Out_R);
 	//printf("%.2f,%.2f\n",speed_left.Out,speed_right.Out);
-	printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
+	//printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
 	//printf("%.3f, %.3f, %.3f, %.3f\n", speed_left.Kp, speed_left.Ki,speed_right.Kp, speed_right.Ki);
 	//printf("%.3f, %.3f\n", Turn.Kp, Turn.Kd);
 	//printf("%d\n",Basic_Speed );
@@ -346,7 +346,7 @@ void Turn_In_Place(float target_angle)
     //1. 读取陀螺仪当前 Yaw 角
     Gyro_Struct *JY61P_Data = get_angle();
     Turn.Actual = JY61P_Data->z;
-    printf("Turn.Actual:%.2f\r\n", Turn.Actual);
+    //printf("Turn.Actual:%.2f\r\n", Turn.Actual);
 
     // 【方案2：动态目标限幅 (虚拟目标点)】
     // 使得目标角度始终只超前实际角度一小段距离，避免产生大阶跃误差

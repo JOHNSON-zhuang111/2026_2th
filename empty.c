@@ -2,6 +2,9 @@
 
 static volatile u8 control_tick_pending = 0U;
 
+#define XUNJI_UART_DEBUG 1U
+#define XUNJI_UART_DEBUG_PERIOD_MS 100U
+
 //u8 set_quanshu=1;//设置圈数
 u8 car_started = 0U; // 小车启动标志位（中断与主循环共享）
 u8 task_mode = 0U;   // 题目的档位，1-4档
@@ -63,6 +66,14 @@ int main(void)
 		}
 
 		UI_ShowTaskSelect();
+
+// #if XUNJI_UART_DEBUG
+// 		if (car_started == 0U)
+// 		{
+// 			xunji_print_values();
+// 			delay_ms(XUNJI_UART_DEBUG_PERIOD_MS);
+// 		}
+// #endif
 
 		if (control_tick_pending)
 		{
