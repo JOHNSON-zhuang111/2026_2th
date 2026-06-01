@@ -1,4 +1,5 @@
 #include "board.h"
+#include "mode.h"
 
 static volatile u8 control_tick_pending = 0U;
 
@@ -6,8 +7,8 @@ static volatile u8 control_tick_pending = 0U;
 #define XUNJI_UART_DEBUG_PERIOD_MS 100U
 
 //u8 set_quanshu=1;//设置圈数
-u8 car_started = 0U; // 小车启动标志位（中断与主循环共享）
-u8 task_mode = 0U;   // 题目的档位，1-4档
+volatile u8 car_started = 0U; // 小车启动标志位（中断与主循环共享）
+volatile u8 task_mode = 0U;   // 题目的档位，1-6档
 Gyro_Struct *JY61P_Data ; // 全局陀螺仪数据指针，供中断和主循环共用
 
 int main(void)
@@ -51,6 +52,7 @@ int main(void)
 			if ((car_started == 1U) && (last_car_started == 0U))
 			{
 				control_reset_runtime_state();
+				mode_reset_runtime_state();
 			}
 			else if ((car_started == 0U) && (last_car_started == 1U))
 			{
@@ -59,6 +61,7 @@ int main(void)
 				Set_PWM_L(0);
 				Set_PWM_R(0);
 				control_reset_runtime_state();
+				mode_reset_runtime_state();
 			}
 
 			SetRunInterrupts(car_started ? 1U : 0U);

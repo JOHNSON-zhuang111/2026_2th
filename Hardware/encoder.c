@@ -2,7 +2,7 @@
 #include "encoder.h"
 #include "led.h"
 uint32_t gpio_interrup1,gpio_interrup2;
-int Get_Encoder_countA,Get_Encoder_countB;
+volatile int Get_Encoder_countA,Get_Encoder_countB;
 /*******************************************************
 
 ***********************************************************/

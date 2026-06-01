@@ -6,7 +6,7 @@
                 "C:/ti/mspm0_sdk_2_10_00_04/source",
                 "C:/ti/mspm0_sdk_2_10_00_04/source/third_party/CMSIS/Core/Include",
                 "C:/ti/CCS2050/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include",
-                "C:/Users/zzz/workspace_ccstheia/2025_E/Hardware",
+                "${workspaceFolder}/Hardware",
                 "${workspaceFolder}",
                 "${workspaceFolder}/Debug"
             ],
