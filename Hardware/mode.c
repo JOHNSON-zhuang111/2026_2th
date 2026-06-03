@@ -4,7 +4,7 @@
 extern u8 task_mode;
 
 #define MODE1_STRAIGHT_SPEED 30
-#define MODE6_STRAIGHT_BEFORE_TURN_TICKS 30U
+
 
 u8 allwhite(void)
 {
@@ -68,7 +68,7 @@ void mode_1(void)
     switch (state) {
         case 0:
             // 沿 target_angle_b 直行；连续检测到黑线后认为到达 b 点。
-            Keep_Angle_Straight(target_angle_b, MODE1_STRAIGHT_SPEED);
+            Keep_Angle_Straight(target_angle_b, 80);
             if (any_black()) {
                 delay_cnt++;
                 if (delay_cnt > 3) {
@@ -589,10 +589,10 @@ void mode_6(void)
 
         case 1:
             // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
-            Keep_Angle_Straight(straight_target_angle, Basic_Speed);
+            Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
             if (straight_cnt >= 30) {
-                turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
+                turn_target_angle = normalize_angle(straight_target_angle + 90.0f);
                 state = 2;
                 straight_cnt = 0;
                 stable_cnt = 0;
@@ -628,12 +628,176 @@ void mode_6(void)
             break;
 
         default:
-            // 异常状态保护：所有计数清零并回到普通循迹。
-            state = 0;
-            left_black_cnt = 0;
-            stable_cnt = 0;
-            straight_cnt = 0;
-            cooldown_cnt = 0;
+            // // 异常状态保护：所有计数清零并回到普通循迹。
+            // state = 0;
+            // left_black_cnt = 0;
+            // stable_cnt = 0;
+            // straight_cnt = 0;
+            // cooldown_cnt = 0;
+            break;
+    }
+}
+void mode_7(void)
+{
+    static uint8_t state = 0;
+    static uint8_t left_black_cnt = 0;         // 左侧探头连续检测到黑线的计数。
+    static uint8_t stable_cnt = 0;             // 转向完成的稳定计数。
+    static uint16_t straight_cnt = 0;          // 检测到左侧黑线后的短直行计时。
+    static uint16_t cooldown_cnt = 0;          // 转弯后冷却计时，避免立刻重复触发。
+    static float straight_target_angle = 0.0f; // 触发转弯前锁定的直行航向。
+    static float turn_target_angle = 0.0f;     // 需要转到的目标航向。
+
+    Gyro_Struct *JY61P_Data = get_angle();
+    float current_yaw = JY61P_Data->z;
+
+    switch (state) {
+        case 0:
+            // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。
+            Xunji_Speed();
+
+            if (digital(1)&&!digital(8)) {
+                left_black_cnt++;
+                if (left_black_cnt > 3) {
+                    straight_target_angle = current_yaw;
+                    state = 1;
+                    left_black_cnt = 0;
+                    stable_cnt = 0;
+                    straight_cnt = 0;
+                }
+            } else {
+                left_black_cnt = 0;
+            }
+            break;
+
+        case 1:
+            // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
+            Keep_Angle_Straight(straight_target_angle, 50);
+            straight_cnt++;
+            if (straight_cnt >= 30) {
+                turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
+                state = 2;
+                straight_cnt = 0;
+                stable_cnt = 0;
+            }
+            break;
+
+        case 2:
+            // 原地左转 135 度；角度连续稳定后进入冷却循迹阶段。
+            Turn_In_Place(turn_target_angle);
+            {
+                float diff = angle_diff(turn_target_angle, current_yaw);
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 3) {
+                        state = 3;
+                        stable_cnt = 0;
+                        cooldown_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+
+        case 3:
+            Keep_Angle_Straight(straight_target_angle, 80);
+            straight_cnt++;
+            if (straight_cnt >= 30) {
+                turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
+                state = 4;
+                straight_cnt = 0;
+                stable_cnt = 0;
+            }
+            break;
+        case 4:
+            if (any_black()) {
+                left_black_cnt++;
+                if (left_black_cnt > 3) {
+                    straight_target_angle = current_yaw;
+                    state = 5;
+                    left_black_cnt = 0;
+                    stable_cnt = 0;
+                    straight_cnt = 0;
+                }
+            } else {
+                left_black_cnt = 0;
+            }
+            break;
+        case 5:
+        // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
+            Keep_Angle_Straight(straight_target_angle, 50);
+            straight_cnt++;
+            if (straight_cnt >= 30) {
+                turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
+                state = 6;
+                straight_cnt = 0;
+                stable_cnt = 0;
+            }
+            break;
+        case 6:
+            Turn_In_Place(turn_target_angle);
+            {
+                float diff = angle_diff(turn_target_angle, current_yaw);
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 3) {
+                        straight_target_angle = current_yaw;
+                        state = 7;
+                        stable_cnt = 0;
+                        cooldown_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+        case 7:
+            Keep_Angle_Straight(straight_target_angle, 80);
+            straight_cnt++;
+            if (straight_cnt >= 300) {
+                turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
+                state = 8;
+                straight_cnt = 0;
+                stable_cnt = 0;
+            }
+            break;
+        case 8:
+            Turn_In_Place(turn_target_angle);
+            {
+                float diff = angle_diff(turn_target_angle, current_yaw);
+                if (diff > -3.0f && diff < 3.0f) {
+                    stable_cnt++;
+                    if (stable_cnt > 3) {
+                        straight_target_angle = current_yaw;
+                        state = 9;
+                        stable_cnt = 0;
+                        cooldown_cnt = 0;
+                    }
+                } else {
+                    stable_cnt = 0;
+                }
+            }
+            break;
+        case 9:
+            Keep_Angle_Straight(straight_target_angle, 80);
+            straight_cnt++;
+            if (straight_cnt >= 300) {
+                if (any_black()) {
+                    Set_PWM_L(0);
+                    Set_PWM_R(0);
+                }
+                state = 10;
+                straight_cnt = 0;
+                stable_cnt = 0;
+            }
+            break;
+        default:
+            // // 异常状态保护：所有计数清零并回到普通循迹。
+            // state = 0;
+            // left_black_cnt = 0;
+            // stable_cnt = 0;
+            // straight_cnt = 0;
+            // cooldown_cnt = 0;
             break;
     }
 }
