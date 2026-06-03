@@ -1,8 +1,8 @@
 #include "key.h"
 
 // 声明外部变量，与 empty.c 或其他文件通信
-extern volatile u8 car_started;
-extern volatile u8 task_mode;       // 题目的档位，1-6档
+extern u8 car_started;  
+extern u8 task_mode;       // 题目的档位，1-5档
 
 typedef enum
 {

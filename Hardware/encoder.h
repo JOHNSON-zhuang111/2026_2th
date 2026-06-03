@@ -3,6 +3,6 @@
 #include "ti_msp_dl_config.h"
 #include "board.h"
 
-extern volatile int Get_Encoder_countA,Get_Encoder_countB;
+extern int Get_Encoder_countA,Get_Encoder_countB;
 float Calculate_Motor_RPM(int encoder_count, int sample_time_ms);
 #endif

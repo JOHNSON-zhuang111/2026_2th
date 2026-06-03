@@ -12,8 +12,8 @@ volatile uint32_t start_time;
 #define PRINTF_ROUTE_MODE PRINTF_ROUTE_BOTH
 #endif
 
-extern volatile u8 car_started;
-extern volatile u8 task_mode;
+extern u8 car_started;
+extern u8 task_mode;
 
 static void debug_uart_send_byte(uint8_t ch)
 {

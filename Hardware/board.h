@@ -8,7 +8,7 @@
 #include "motor.h"
 #include "encoder.h"
 #include "xunji.h"
-#include "track_logic.h"
+// #include "track_logic.h"
 #include "error.h"
 #include "control.h"
 #include "delay.h"

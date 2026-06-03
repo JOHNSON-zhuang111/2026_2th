@@ -10,8 +10,8 @@
 #define __UART_VOFA_H__
 #include"board.h"
 
-extern volatile uint8_t car_started;
-extern volatile uint8_t task_mode;
+extern uint8_t car_started;
+extern uint8_t task_mode;
 extern int Basic_Speed;
 /*
  * 使用示例：

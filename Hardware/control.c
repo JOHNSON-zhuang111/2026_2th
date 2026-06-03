@@ -2,7 +2,7 @@
 #include "bsp_gyro.h"
 #include "error.h"
 #include "mode.h"
-extern volatile u8 task_mode;
+extern u8 task_mode;
 int sensor_err=0,final_err=0;
 int Basic_Speed=80;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 100
@@ -17,15 +17,6 @@ float yaw=0;
 #define  SPEED_FILTER_SIZE 5
 static float speed_buffer[2][SPEED_FILTER_SIZE] ={0};
 static u8 speed_index[2]={0};
-
-typedef enum {
-	DRIVE_MODE_NONE = 0,
-	DRIVE_MODE_TRACK,
-	DRIVE_MODE_STRAIGHT,
-	DRIVE_MODE_TURN
-} DriveMode_t;
-
-static DriveMode_t active_drive_mode = DRIVE_MODE_NONE;
 // 1. 循迹速度环PID参数（兼作实际运行状态变量）
 PID_t speed_left ={
     .Kp=0.165,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
@@ -56,9 +47,9 @@ PID_t turn_speed_right ={
 
 // 3. 位置式PID参数
 PID_t Xunji ={
-    .Kp=3.0,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
+    .Kp=2.5,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
     .Ki=0.0,    // 保持积分不变
-    .Kd=1.5,    
+    .Kd=3.5,    
     .OutMax=30, .OutMin=-30,
 	};
 PID_t Turn ={
@@ -94,63 +85,35 @@ static void PID_ResetRuntime(PID_t *p)
 	p->ErrorInt = 0.0f;
 }
 
-static void SpeedLoop_ResetRuntime(void)
-{
-	Left_Speed = 0.0f;
-	Right_Speed = 0.0f;
-	Speed_Out_L = 0.0f;
-	Speed_Out_R = 0.0f;
-	MA_RPM = 0.0f;
-	MB_RPM = 0.0f;
-	memset(speed_buffer, 0, sizeof(speed_buffer));
-	speed_index[0] = 0U;
-	speed_index[1] = 0U;
-	__disable_irq();
-	Get_Encoder_countA = 0;
-	Get_Encoder_countB = 0;
-	__enable_irq();
-	PID_ResetRuntime(&speed_left);
-	PID_ResetRuntime(&speed_right);
-}
-
-static void Control_EnterDriveMode(DriveMode_t mode)
-{
-	if (active_drive_mode != mode)
-	{
-		SpeedLoop_ResetRuntime();
-		active_drive_mode = mode;
-	}
-}
-
 void control_reset_runtime_state(void)
 {
 	sensor_err = 0;
 	final_err = 0;
+	Left_Speed = 0;
+	Right_Speed = 0;
+	Speed_Out_L = 0.0f;
+	Speed_Out_R = 0.0f;
 	Place_Out = 0.0f;
+	MA_RPM = 0.0f;
+	MB_RPM = 0.0f;
 	yaw = 0.0f;
-	SpeedLoop_ResetRuntime();
-	PID_ResetRuntime(&Turn);
-	PID_ResetRuntime(&Straight);
-	PID_ResetRuntime(&Xunji);
-	active_drive_mode = DRIVE_MODE_NONE;
+	memset(speed_buffer, 0, sizeof(speed_buffer));
+	speed_index[0] = 0U;
+	speed_index[1] = 0U;
+	Get_Encoder_countA = 0;
+	Get_Encoder_countB = 0;
+	PID_ResetRuntime(&speed_left);
+	PID_ResetRuntime(&speed_right);
 }
 
 
 void control(void)
 {
-	static u8 last_mode = 0xFFU;
 	u8 mode = task_mode;
 
 	if (mode < 1U || mode > 6U)
 	{
 		mode = 1U;
-	}
-
-	if (last_mode != mode)
-	{
-		control_reset_runtime_state();
-		mode_reset_runtime_state();
-		last_mode = mode;
 	}
 
 	switch (mode)
@@ -177,7 +140,7 @@ void control(void)
 			mode_6();
 			break;
 		default:
-			Track_Mode6Enhanced();
+
 			break;
 	}
     
@@ -229,7 +192,9 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	speed_left.Actual = MA_RPM; // 将转速转换为每分钟转数（RPM），假设编码器计数是每20ms的增量
 	speed_right.Actual = MB_RPM; // 将转速转换为每分钟转数（RPM），假设编码器计数是每20ms的增量
 	//printf("Actual:%.2f, %.2f\n\r", speed_left.Actual, speed_right.Actual);
-// 4. 编码器计数已经在本周期开始处原子读取并清零，避免中断更新时丢计数。
+// 4. 重置编码器计数
+// 将编码器计数重置为0，为下一次测量做准备
+	Get_Encoder_countB = Get_Encoder_countA = 0;
 
 
     speed_left.Target=Left_Speed; //转速目标值
@@ -337,7 +302,6 @@ void PID_Update(PID_t *p)
 
 void Xunji_Speed(void) 
 { 
-	 Control_EnterDriveMode(DRIVE_MODE_TRACK);
 	 Xunji.Actual =Error_Calculate();  //获取传感器误差
 	 Xunji.Target = 0; //目标误差为0
  
@@ -375,8 +339,10 @@ void Turn_In_Place(float target_angle)
     float turn_error;
     float Turn_Out;
 	
-	Control_EnterDriveMode(DRIVE_MODE_TURN);
-	// Turn.Target = target_angle;
+	//Turn.Target = target_angle;
+    // 切换底层速度环为【原地转角参数】
+    // speed_left.Kp = turn_speed_left.Kp; speed_left.Ki = turn_speed_left.Ki; speed_left.Kd = turn_speed_left.Kd;
+    // speed_right.Kp = turn_speed_right.Kp; speed_right.Ki = turn_speed_right.Ki; speed_right.Kd = turn_speed_right.Kd;
     //1. 读取陀螺仪当前 Yaw 角
     Gyro_Struct *JY61P_Data = get_angle();
     Turn.Actual = JY61P_Data->z;
@@ -385,11 +351,9 @@ void Turn_In_Place(float target_angle)
     // 【方案2：动态目标限幅 (虚拟目标点)】
     // 使得目标角度始终只超前实际角度一小段距离，避免产生大阶跃误差
     float max_lead = 25.0f; // 相对放宽一点引导角，由于已经限制了 OutMax ，不用担心过载
-    float real_diff = target_angle - Turn.Actual;
-    
+
     // 处理 180 到 -180 的临界跳变
-    while (real_diff > 180.0f)  real_diff -= 360.0f;
-    while (real_diff < -180.0f) real_diff += 360.0f;
+    float real_diff = angle_diff(target_angle, Turn.Actual);
 
     if (real_diff > max_lead) {
         Turn.Target = Turn.Actual + max_lead;
@@ -457,7 +421,8 @@ void Turn_In_Place_Rate(float target_angle)
     static float last_target_angle = 999.0f;
     static float last_rate_error = 0.0f;
 
-    Control_EnterDriveMode(DRIVE_MODE_TURN);
+    speed_left.Kp = turn_speed_left.Kp; speed_left.Ki = turn_speed_left.Ki; speed_left.Kd = turn_speed_left.Kd;
+    speed_right.Kp = turn_speed_right.Kp; speed_right.Ki = turn_speed_right.Ki; speed_right.Kd = turn_speed_right.Kd;
 
     Gyro_Struct *JY61P_Data = get_angle();
     float current_yaw = JY61P_Data->z;
@@ -553,8 +518,9 @@ void Keep_Angle_Straight(float target_angle, int base_speed)
         Straight.Error2 = 0.0f;
         last_target_angle = target_angle;
     }
-    Control_EnterDriveMode(DRIVE_MODE_STRAIGHT);
     // 直行纠偏的PD参数 (P小一点只要能微调回来就行，D给一点用来防震荡画龙)
+	speed_left.Kp = turn_speed_left.Kp; speed_left.Ki = turn_speed_left.Ki; speed_left.Kd = turn_speed_left.Kd;
+    speed_right.Kp = turn_speed_right.Kp; speed_right.Ki = turn_speed_right.Ki; speed_right.Kd = turn_speed_right.Kd;
     // 1. 获取当前偏航角
     Gyro_Struct *JY61P_Data = get_angle();
     float current_yaw = JY61P_Data->z;
