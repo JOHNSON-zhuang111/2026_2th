@@ -22,13 +22,13 @@ PID_t speed_left ={
     .Kp=0.165,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
     .Ki=0.045,    // 保持积分不变
     .Kd=0.0,    
-    .OutMax=100, .OutMin=-100,
+    .OutMax=150, .OutMin=-150,
 };
 PID_t speed_right ={
     .Kp=0.165,  
     .Ki=0.045,  
     .Kd=0.0,  
-    .OutMax=100, .OutMin=-100,
+    .OutMax=150, .OutMin=-150,
 };
 
 // 2. 原地转角速度环PID参数（当启动转圈时临时调用这组参数）
