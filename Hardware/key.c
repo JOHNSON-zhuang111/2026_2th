@@ -1,8 +1,8 @@
 #include "key.h"
 
 // 声明外部变量，与 empty.c 或其他文件通信
-extern u8 car_started;  
-extern u8 task_mode;       // 题目的档位，1-5档
+extern volatile u8 car_started;
+extern volatile u8 task_mode;       // 题目的档位，1-5档
 
 typedef enum
 {
@@ -95,7 +95,7 @@ static void key_a_on_pressed(void)
     if (car_started == 0U)
     {
         task_mode++;
-        if (task_mode > 6U)
+        if (task_mode > 7U)
         {
             task_mode = 1U;
         }
@@ -162,7 +162,5 @@ void Key(void)
         b_press_latched = 0U;
     }
 }
-
-
 
 

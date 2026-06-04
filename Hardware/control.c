@@ -2,9 +2,9 @@
 #include "bsp_gyro.h"
 #include "error.h"
 #include "mode.h"
-extern u8 task_mode;
+extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
-int Basic_Speed=80;    				//基础速度，在这里修改速度，但是元素要先注释掉
+int Basic_Speed=100;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 100
 float Left_Speed=0,Right_Speed=0;
 float Turn_factor=1.0;
@@ -47,9 +47,9 @@ PID_t turn_speed_right ={
 
 // 3. 位置式PID参数
 PID_t Xunji ={
-    .Kp=2.5,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
+    .Kp=1.5,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
     .Ki=0.0,    // 保持积分不变
-    .Kd=3.5,    
+    .Kd=2.0,    
     .OutMax=30, .OutMin=-30,
 	};
 PID_t Turn ={
@@ -111,7 +111,7 @@ void control(void)
 {
 	u8 mode = task_mode;
 
-	if (mode < 1U || mode > 6U)
+	if (mode < 1U || mode > 7U)
 	{
 		mode = 1U;
 	}
@@ -127,17 +127,21 @@ void control(void)
             Xunji_Speed();
 			break;
 		case 3U:
-			mode_3();
+			// mode_3();
+            mode_7();
 			// Keep_Angle_Straight(0.0f, 50);
 			break;
 		case 4U:
-			mode_4();
+			mode_8();
 			break;
 		case 5U:
 			mode_5();
 			break;
 		case 6U:
 			mode_6();
+			break;
+		case 7U:
+			mode_7();
 			break;
 		default:
 
