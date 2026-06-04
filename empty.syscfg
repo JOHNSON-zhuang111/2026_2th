@@ -201,7 +201,7 @@ TIMER1.timerClkPrescale   = 32;
 TIMER1.timerMode          = "PERIODIC";
 TIMER1.timerStartTimer    = true;
 TIMER1.interrupts         = ["ZERO"];
-TIMER1.timerPeriod        = "20 ms";
+TIMER1.timerPeriod        = "20ms";
 TIMER1.peripheral.$assign = "TIMG0";
 
 UART1.$name                    = "UART_0";

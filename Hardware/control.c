@@ -6,9 +6,10 @@ extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
 int Basic_Speed=100;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 100
+#define DRIVE_SPEED_LIMIT 100
 float Left_Speed=0,Right_Speed=0;
 float Turn_factor=1.0;
-float Place_PD[2] = {7,4};//本次调试，原来KP值为5,KD值为3
+
  //转向环PID参数
 static float Speed_Out_L=0,Speed_Out_R=0,Place_Out=0;//两个环的输出
 float MA_RPM=0,MB_RPM=0;
@@ -550,6 +551,6 @@ void Keep_Angle_Straight(float target_angle, int base_speed)
     Right_Speed = base_speed + Angle_Out;
     if (Left_Speed < 0.0f) Left_Speed = 0.0f;
     if (Right_Speed < 0.0f) Right_Speed = 0.0f;
-    if (Left_Speed > DRIVE_PWM_LIMIT) Left_Speed = DRIVE_PWM_LIMIT;
-    if (Right_Speed > DRIVE_PWM_LIMIT) Right_Speed = DRIVE_PWM_LIMIT;
+    if (Left_Speed > DRIVE_SPEED_LIMIT) Left_Speed = DRIVE_SPEED_LIMIT;
+    if (Right_Speed > DRIVE_SPEED_LIMIT) Right_Speed = DRIVE_SPEED_LIMIT;
 }

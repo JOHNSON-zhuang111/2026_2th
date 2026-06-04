@@ -661,7 +661,7 @@ void mode_7(void)
             // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。A-B
             Xunji_Speed();
             stable_cnt++;
-            if (stable_cnt>100 && digital(1)&&!digital(8)) {
+            if (stable_cnt>150 && (digital(1)+digital(2)+digital(3)+digital(4))>2) {
                 left_black_cnt++;
                 if (left_black_cnt > 3) {
                     straight_target_angle = current_yaw;
@@ -692,10 +692,10 @@ void mode_7(void)
             Turn_In_Place(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -3.0f && diff < 3.0f) {
+                if (diff > -1.0f && diff < 1.0f) {
                     straight_target_angle = turn_target_angle;
                     stable_cnt++;
-                    if (stable_cnt > 3) {
+                    if (stable_cnt > 2) {
                         state = 3;
                         stable_cnt = 0;
                         cooldown_cnt = 0;
@@ -709,9 +709,9 @@ void mode_7(void)
         case 3:
             Keep_Angle_Straight(straight_target_angle, 150);//B-D
             straight_cnt++;
-            if (straight_cnt >= 100 && any_black()) {
+            if (straight_cnt >= 150 && any_black()) {
                 left_black_cnt++;
-                if (left_black_cnt > 3) {
+                if (left_black_cnt > 2) {
                     straight_target_angle = current_yaw;
                     state = 4;
                     left_black_cnt = 0;
@@ -739,7 +739,7 @@ void mode_7(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 3) {
+                    if (stable_cnt > 2) {
                         straight_target_angle = current_yaw;
                         state = 6;
                         stable_cnt = 0;
@@ -753,9 +753,9 @@ void mode_7(void)
         case 6:
             Xunji_Speed();
             stable_cnt++;
-            if (stable_cnt > 100 && digital(8)&&!digital(1)) {
+            if (stable_cnt > 150 && (digital(8)+digital(7)+digital(6)+digital(5))>2) {
                 right_black_cnt++;
-                if (right_black_cnt > 3) {
+                if (right_black_cnt > 2) {
                     straight_target_angle = current_yaw;
                     state = 7;
                     right_black_cnt = 0;
@@ -785,7 +785,7 @@ void mode_7(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 3) {
+                    if (stable_cnt > 2) {
                         straight_target_angle = current_yaw;
                         state = 9;
                         stable_cnt = 0;
@@ -799,7 +799,7 @@ void mode_7(void)
         case 9:
             Keep_Angle_Straight(straight_target_angle, 150);
             straight_cnt++;
-            if (straight_cnt >= 120 && any_black()) {
+            if (straight_cnt >= 150 && any_black()) {
                 control_reset_runtime_state();
                 state = 10;
                 straight_cnt = 0;
@@ -841,9 +841,9 @@ void mode_8(void)
             // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。A-B
             Xunji_Speed();
             stable_cnt++;
-            if (stable_cnt > 100 && digital(1)&&!digital(8)) {
+            if (stable_cnt>150 && (digital(1)+digital(2)+digital(3)+digital(4))>2) {
                 left_black_cnt++;
-                if (left_black_cnt > 3) {
+                if (left_black_cnt > 2) {
                     straight_target_angle = current_yaw;
                     state = 1;
                     left_black_cnt = 0;
@@ -859,7 +859,7 @@ void mode_8(void)
             // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
             Keep_Angle_Straight(straight_target_angle, 50);
             straight_cnt++;
-            if (straight_cnt >= 40) {
+            if (straight_cnt >= 50) {
                 turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
                 state = 2;
                 straight_cnt = 0;
@@ -875,7 +875,7 @@ void mode_8(void)
                 if (diff > -1.0f && diff < 1.0f) {
                     straight_target_angle = turn_target_angle;
                     stable_cnt++;
-                    if (stable_cnt > 1) {
+                    if (stable_cnt > 2) {
                         state = 3;
                         stable_cnt = 0;
                         cooldown_cnt = 0;
@@ -889,9 +889,9 @@ void mode_8(void)
         case 3:
             Keep_Angle_Straight(straight_target_angle, 150);//B-D
             straight_cnt++;
-            if (straight_cnt >= 50 && any_black()) {
+            if (straight_cnt >= 150 && any_black()) {
                 left_black_cnt++;
-                if (left_black_cnt > 3) {
+                if (left_black_cnt > 2) {
                     straight_target_angle = current_yaw;
                     state = 4;
                     left_black_cnt = 0;
@@ -919,7 +919,7 @@ void mode_8(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 1) {
+                    if (stable_cnt > 2) {
                         straight_target_angle = current_yaw;
                         state = 6;
                         stable_cnt = 0;
@@ -933,7 +933,7 @@ void mode_8(void)
         case 6:
             Xunji_Speed();//D-C
             stable_cnt++;
-            if (stable_cnt > 100 && digital(8)&&!digital(1)) {
+            if (stable_cnt > 150 && (digital(8)+digital(7)+digital(6)+digital(5))>2) {
                 right_black_cnt++;
                 if (right_black_cnt > 2) {
                     straight_target_angle = current_yaw;
@@ -952,7 +952,7 @@ void mode_8(void)
         // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
             Keep_Angle_Straight(straight_target_angle, 50);
             straight_cnt++;
-            if (straight_cnt >= 40) {
+            if (straight_cnt >= 50) {
                 turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
                 state = 8;
                 straight_cnt = 0;
@@ -965,7 +965,7 @@ void mode_8(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 1) {
+                    if (stable_cnt > 2) {
                         straight_target_angle = current_yaw;
                         state = 9;
                         stable_cnt = 0;
@@ -979,7 +979,7 @@ void mode_8(void)
         case 9:
             Keep_Angle_Straight(straight_target_angle, 150);//停车
             straight_cnt++;
-           if (straight_cnt >= 120 && any_black()) {
+           if (straight_cnt >= 150 && any_black()) {
             lap_count++;
 
             if (lap_count >= 4) {
