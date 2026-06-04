@@ -5,8 +5,8 @@
 extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
 int Basic_Speed=100;    				//基础速度，在这里修改速度，但是元素要先注释掉
-#define DRIVE_PWM_LIMIT 100
-#define DRIVE_SPEED_LIMIT 100
+#define DRIVE_PWM_LIMIT 120
+#define DRIVE_SPEED_LIMIT 180
 float Left_Speed=0,Right_Speed=0;
 float Turn_factor=1.0;
 

@@ -841,9 +841,9 @@ void mode_8(void)
             // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。A-B
             Xunji_Speed();
             stable_cnt++;
-            if (stable_cnt>150 && (digital(1)+digital(2)+digital(3)+digital(4))>2) {
+            if (stable_cnt>120 && (digital(1)||digital(2))) {
                 left_black_cnt++;
-                if (left_black_cnt > 2) {
+                if (left_black_cnt > 0) {
                     straight_target_angle = current_yaw;
                     state = 1;
                     left_black_cnt = 0;
@@ -860,7 +860,7 @@ void mode_8(void)
             Keep_Angle_Straight(straight_target_angle, 50);
             straight_cnt++;
             if (straight_cnt >= 50) {
-                turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
+                turn_target_angle = normalize_angle(straight_target_angle + 136.0f);
                 state = 2;
                 straight_cnt = 0;
                 stable_cnt = 0;
@@ -875,7 +875,7 @@ void mode_8(void)
                 if (diff > -1.0f && diff < 1.0f) {
                     straight_target_angle = turn_target_angle;
                     stable_cnt++;
-                    if (stable_cnt > 2) {
+                    if (stable_cnt > 1) {
                         state = 3;
                         stable_cnt = 0;
                         cooldown_cnt = 0;
@@ -919,7 +919,7 @@ void mode_8(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 2) {
+                    if (stable_cnt > 1) {
                         straight_target_angle = current_yaw;
                         state = 6;
                         stable_cnt = 0;
@@ -933,9 +933,9 @@ void mode_8(void)
         case 6:
             Xunji_Speed();//D-C
             stable_cnt++;
-            if (stable_cnt > 150 && (digital(8)+digital(7)+digital(6)+digital(5))>2) {
+            if (stable_cnt > 150 && (digital(8) || digital(7))) {
                 right_black_cnt++;
-                if (right_black_cnt > 2) {
+                if (right_black_cnt > 1) {
                     straight_target_angle = current_yaw;
                     state = 7;
                     right_black_cnt = 0;
@@ -965,7 +965,7 @@ void mode_8(void)
                 float diff = angle_diff(turn_target_angle, current_yaw);
                 if (diff > -1.0f && diff < 1.0f) {
                     stable_cnt++;
-                    if (stable_cnt > 2) {
+                    if (stable_cnt > 1) {
                         straight_target_angle = current_yaw;
                         state = 9;
                         stable_cnt = 0;
