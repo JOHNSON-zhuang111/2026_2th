@@ -52,7 +52,7 @@ int main(void)
 			if ((car_started == 1U) && (last_car_started == 0U))
 			{
 				control_reset_runtime_state();
-				mode_reset_runtime_state();
+				
 			}
 			else if ((car_started == 0U) && (last_car_started == 1U))
 			{
@@ -61,7 +61,7 @@ int main(void)
 				Set_PWM_L(0);
 				Set_PWM_R(0);
 				control_reset_runtime_state();
-				mode_reset_runtime_state();
+				
 			}
 
 			SetRunInterrupts(car_started ? 1U : 0U);

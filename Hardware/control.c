@@ -160,8 +160,8 @@ void control(void)
  	// 1. 计算电机转速
 // 使用Calculate_Motor_RPM函数计算左右轮的转速
 // 参数1: 编码器计数，参数2: 采样时间（毫秒）
-MA_RPM = Calculate_Motor_RPM(Get_Encoder_countA, 20); // 获取左轮转速 (单位: RPM)
-MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单位: RPM)
+MA_RPM = Calculate_Motor_RPM(Get_Encoder_countA, 5); // 获取左轮转速 (单位: RPM)
+MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 5); // 获取右轮转速 (单位: RPM)
 
 
 // 2. 速度滤波处理
