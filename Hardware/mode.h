@@ -7,6 +7,8 @@ void mode_1(void);
 void mode_2(void);
 void mode_3(void);
 
+float normalize_angle(float angle);
+float angle_diff(float target_angle, float current_angle);
 
 
 #endif

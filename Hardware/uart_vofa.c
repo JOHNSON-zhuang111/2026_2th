@@ -195,6 +195,9 @@ static void vofa_set_sram_data(uint8_t _head, float _data)
     /* 其他参数设置 */
     /* 注意：如果是整型参数-需要强制转换(int) */ 
 	else if (g_ucVofaBuf[_id_pos1] == 'S' && g_ucVofaBuf[_id_pos2] == '1') {
+        if (_data == 1.0f) {
+            control_reset_xunji_pid_runtime();
+        }
         car_started = (int)_data;
     }
     else if (g_ucVofaBuf[_id_pos1] == 'P' && g_ucVofaBuf[_id_pos2] == '3') {
@@ -232,6 +235,13 @@ static void vofa_set_sram_data(uint8_t _head, float _data)
     }
     else if (g_ucVofaBuf[_id_pos1] == 'M' && g_ucVofaBuf[_id_pos2] == '1') {
         task_mode = (uint8_t)_data;
+    }
+    else if (g_ucVofaBuf[_id_pos1] == 'L' && g_ucVofaBuf[_id_pos2] == '1') {
+        if (_data < 1.0f) {
+            set_quanshu = 1U;
+        } else {
+            set_quanshu = (uint8_t)_data;
+        }
     }
 
 }

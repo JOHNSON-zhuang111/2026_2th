@@ -1,12 +1,15 @@
 #include "board.h"
 #include "mode.h"
 
+
 static volatile u8 control_tick_pending = 0U;
 
 #define XUNJI_UART_DEBUG 1U
 #define XUNJI_UART_DEBUG_PERIOD_MS 100U
+#define SR04_UART_DEBUG 1U
+#define SR04_UART_DEBUG_PERIOD_MS 200U
 
-//u8 set_quanshu=1;//设置圈数
+volatile u8 set_quanshu = 1U; // 设置目标圈数，可通过 VOFA 命令 L1 修改
 volatile u8 car_started = 0U; // 小车启动标志位（中断与主循环共享）
 volatile u8 task_mode = 0U;   // 题目的档位，1-6档
 Gyro_Struct *JY61P_Data ; // 全局陀螺仪数据指针，供中断和主循环共用
@@ -16,6 +19,7 @@ int main(void)
 	//初始化
 	uint8_t xj_line_1[20];
     SYSCFG_DL_init();
+	SR04_Init();
 	jy61pInit();
 	OLED_Init();
 	OLED_Clear();
@@ -39,7 +43,7 @@ int main(void)
 	// 上电默认未发车：关闭业务中断，优先保证按键选题和OLED显示
 	SetRunInterrupts(0U);
 	
-	float YAW;
+	
     while (1) 
     {
 		static u8 last_car_started = 0U;
@@ -69,6 +73,15 @@ int main(void)
 		}
 
 		UI_ShowTaskSelect();
+
+#if SR04_UART_DEBUG
+		if (car_started == 0U)
+		{
+			float sr04_length = SR04_GetLength();
+			printf("SR04: %.2f cm\r\n", sr04_length);
+			delay_ms(SR04_UART_DEBUG_PERIOD_MS);
+		}
+#endif
 
 // #if XUNJI_UART_DEBUG
 // 		if (car_started == 0U)

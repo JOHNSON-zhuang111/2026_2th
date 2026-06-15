@@ -15,7 +15,7 @@
 #include "uart_vofa.h"
 #include "oled_software_i2c.h"
 #include "bsp_gyro.h"
-
+#include "bsp_sr04.h"
 #define ABS(a)      (a>0 ? a:(-a))
 typedef int32_t  s32;
 typedef int16_t s16;
@@ -71,6 +71,10 @@ extern int Flag_Stop;
 //��systick�ļ���ֵת��Ϊ������ʱ�䵥λ
 #define SysTick_MS(x)  ((SysTickFre/1000U)*(uint32_t)(x))
 #define SysTick_US(x)  ((SysTickFre/1000000U)*(uint32_t)(x))
+
+#ifndef ENCODERA_INT_IRQN
+#define ENCODERA_INT_IRQN GPIO_MULTIPLE_GPIOA_INT_IRQN
+#endif
 
 uint32_t Systick_getTick(void);
 void delay_ms(uint32_t ms);

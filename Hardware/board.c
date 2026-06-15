@@ -9,7 +9,7 @@ volatile uint32_t start_time;
 #define PRINTF_ROUTE_BOTH  2
 
 #ifndef PRINTF_ROUTE_MODE
-#define PRINTF_ROUTE_MODE PRINTF_ROUTE_BOTH
+#define PRINTF_ROUTE_MODE PRINTF_ROUTE_UART0
 #endif
 
 extern volatile u8 car_started;

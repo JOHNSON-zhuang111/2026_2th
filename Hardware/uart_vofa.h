@@ -12,6 +12,7 @@
 
 extern volatile uint8_t car_started;
 extern volatile uint8_t task_mode;
+extern volatile uint8_t set_quanshu;
 extern int Basic_Speed;
 /*
  * 使用示例：

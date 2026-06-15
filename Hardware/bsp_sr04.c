@@ -1,198 +1,157 @@
-/*
- * 立创开发板软硬件资料与相关扩展板软硬件资料官网全部开源
- * 开发板官网：www.lckfb.com
- * 文档网站：wiki.lckfb.com
- * 技术支持常驻论坛，任何技术问题欢迎随时交流学习
- * 嘉立创社区问答：https://www.jlc-bbs.com/lckfb
- * 关注bilibili账号：【立创开发板】，掌握我们的最新动态！
- * 不靠卖板赚钱，以培养中国工程师为己任
- */
-
-#include "bsp_sr04.h"
 #include "board.h"
 
-volatile uint32_t msHcCount = 0; // ms计数
+/* 最近一次测距结果，单位 cm；在 ECHO 下降沿中断中更新。 */
+volatile float distance = 0.0f;
+/* 测距完成标志：0 表示等待 ECHO 下降沿，1 表示本次测距完成。 */
+volatile uint8_t SR04_Flag = 0U;
 
-float distance = 0;
-uint8_t SR04_Flag = 0; // 完成测量标志
-
-
-/******************************************************************
- * 函 数 名 称：SR04_Init
- * 函 数 说 明：超声波初始化
- * 函 数 形 参：无
- * 函 数 返 回：无
- * 作       者：LCKFB
- * 备       注：TRIG引脚负责发送超声波脉冲串
-******************************************************************/
+/**
+ * @brief 初始化 HC-SR04 超声波模块。
+ *
+ * TIMER_SR04 在 SysConfig 中配置为 1 MHz 计数频率，1 个计数约等于 1 us。
+ * ECHO 使用 GPIOA 共享中断，与编码器同属 GROUP1，实际入口在 encoder.c 的
+ * GROUP1_IRQHandler() 中调用 SR04_HandleEchoInterrupt()。
+ */
 void SR04_Init(void)
 {
-    // 清除定时器中断标志
-    NVIC_ClearPendingIRQ(TIMER_0_INST_INT_IRQN);
-    // 使能定时器中断
-    NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
+    /* 空闲时 TRIG 保持低电平。 */
+    SR04_TRIG(0);
+
+    /* 测距前先停止并清零专用计时器，避免残留计数影响第一次测量。 */
+    DL_TimerA_stopCounter(TIMER_SR04_INST);
+    DL_TimerA_setTimerCount(TIMER_SR04_INST, TIMER_SR04_INST_LOAD_VALUE);
+
+    /* ECHO 为 PA7，需要同时捕获上升沿和下降沿：上升沿开始计时，下降沿结束计时。 */
+    DL_GPIO_setLowerPinsPolarity(SR04_PORT, DL_GPIO_PIN_7_EDGE_RISE_FALL);
+    DL_GPIO_clearInterruptStatus(SR04_PORT, SR04_Echo_PIN);
+
+    /* 使能 SR04 所在 GPIOA 中断。 */
+    NVIC_ClearPendingIRQ(SR04_INT_IRQN);
+    NVIC_EnableIRQ(SR04_INT_IRQN);
 }
-/******************************************************************
- * 函 数 名 称：Open_Timer
- * 函 数 说 明：打开定时器
- * 函 数 形 参：无
- * 函 数 返 回：无
- * 作       者：LCKFB
- * 备       注：
-******************************************************************/
+
+/**
+ * @brief 开始记录 ECHO 高电平宽度。
+ */
 void Open_Timer(void)
 {
-
-    DL_TimerG_setTimerCount(TIMER_0_INST, 0);   // 清除定时器计数
-
-    msHcCount = 0;
-
-    DL_TimerG_startCounter(TIMER_0_INST);   // 使能定时器
+    DL_TimerA_setTimerCount(TIMER_SR04_INST, TIMER_SR04_INST_LOAD_VALUE);
+    DL_TimerA_startCounter(TIMER_SR04_INST);
 }
 
-/******************************************************************
- * 函 数 名 称：Get_TIMER_Count
- * 函 数 说 明：获取定时器定时时间
- * 函 数 形 参：无
- * 函 数 返 回：数据
- * 作       者：LCKFB
- * 备       注：
-******************************************************************/
+/**
+ * @brief 读取当前 ECHO 高电平持续时间。
+ *
+ * @return TIMER_SR04 当前计数值，单位约为 us。
+ */
 uint32_t Get_TIMER_Count(void)
 {
-    uint32_t time  = 0;
-    time   = msHcCount * 1000;                       // 得到us
-    time  += DL_TimerG_getTimerCount(TIMER_0_INST);  // 得到ms
+    uint32_t count = DL_TimerA_getTimerCount(TIMER_SR04_INST);
 
-    DL_TimerG_setTimerCount(TIMER_0_INST, 0);   // 清除定时器计数
-    delay_ms(1);
-    return time ;
+    if (count > TIMER_SR04_INST_LOAD_VALUE) {
+        return 0U;
+    }
+
+    return TIMER_SR04_INST_LOAD_VALUE - count;
 }
 
-/******************************************************************
- * 函 数 名 称：Close_Timer
- * 函 数 说 明：关闭定时器
- * 函 数 形 参：无
- * 函 数 返 回：无
- * 作       者：LCKFB
- * 备       注：
-******************************************************************/
+/**
+ * @brief 停止超声波计时器。
+ */
 void Close_Timer(void)
 {
-    DL_TimerG_stopCounter(TIMER_0_INST);     // 关闭定时器
+    DL_TimerA_stopCounter(TIMER_SR04_INST);
 }
 
-/******************************************************************
- * 函 数 名 称：TIMER_0_INST_IRQHandler
- * 函 数 说 明：定时器中断服务函数
- * 函 数 形 参：无
- * 函 数 返 回：无
- * 作       者：LCKFB
- * 备       注：1ms进入一次
-******************************************************************/
-void TIMER_0_INST_IRQHandler(void)
+/**
+ * @brief 处理 ECHO 引脚边沿中断。
+ *
+ * 该函数不直接作为中断函数注册，而是在 encoder.c 的 GROUP1_IRQHandler()
+ * 中被调用，用于避免多个文件重复定义 GROUP1_IRQHandler()。
+ */
+void SR04_HandleEchoInterrupt(void)
 {
-    //如果产生了定时器中断
-    switch( DL_TimerG_getPendingInterrupt(TIMER_0_INST) )
-    {
-        case DL_TIMERA_IIDX_LOAD:
-                msHcCount++;
-            break;
+    uint32_t sr04_int = DL_GPIO_getEnabledInterruptStatus(SR04_PORT, SR04_Echo_PIN);
 
-        default://其他的定时器中断
-            break;
+    /* 本次 GROUP1 中断不是 SR04_ECHO 触发，直接返回。 */
+    if ((sr04_int & SR04_Echo_PIN) == 0U) {
+        return;
     }
+
+    if (SR04_ECHO()) {
+        /* 上升沿：ECHO 变高，开始计时。 */
+        SR04_Flag = 0U;
+        distance = 0.0f;
+        Open_Timer();
+    } else {
+        /* 下降沿：ECHO 变低，停止计时并换算距离。 */
+        Close_Timer();
+        SR04_Flag = 1U;
+        /* HC-SR04 经验公式：距离(cm) = 高电平时间(us) / 58。 */
+        distance = (float) Get_TIMER_Count() / 58.0f;
+    }
+
+    DL_GPIO_clearInterruptStatus(SR04_PORT, SR04_Echo_PIN);
 }
 
-void GROUP1_IRQHandler(void)//Group1的中断服务函数
-{
-    //读取Group1的中断寄存器并清除中断标志位
-    switch( DL_Interrupt_getPendingGroup(DL_INTERRUPT_GROUP_1) )
-    {
-        //检查GPIO端口中断，注意是INT_IIDX
-        case SR04_INT_IIDX:
-            if( SR04_ECHO() ) // 上升沿
-            {
-                SR04_Flag = 0;
-                distance = 0.0;
-                Open_Timer();   //打开定时器
-            }
-            else // 下降沿
-            {
-                NVIC_DisableIRQ(SR04_INT_IRQN); // 关闭按键引脚的GPIO端口中断
-
-                Close_Timer();   // 关闭定时器
-                SR04_Flag = 1;
-                distance = (float)Get_TIMER_Count() / 58.0f;   // 获取时间,分辨率为1us
-            }
-        break;
-    }
-}
-
-
-/******************************************************************
- * 函 数 名 称：SR04_GetLength
- * 函 数 说 明：获取测量距离
- * 函 数 形 参：无
- * 函 数 返 回：测量距离
- * 作       者：LCKFB
- * 备       注：无
-******************************************************************/
+/**
+ * @brief 获取一次滤波后的超声波距离。
+ *
+ * 连续测量 5 次，保留有效值；有效值不少于 3 个时，排序后去掉最大值和最小值，
+ * 返回剩余值的平均距离。若有效测量不足 3 次，返回 0。
+ *
+ * @return 距离，单位 cm。
+ */
 float SR04_GetLength(void)
 {
-    /* 测5次数据，去掉最高值和最低值后计算平均值 */
-    float distances[5] = {0}; // 用于存储测量结果
-    uint32_t TimeOut = 1000;
-    uint8_t valid_count = 0;
+    /* 存放最多 5 次有效测距结果。 */
+    float distances[5] = {0.0f};
+    uint8_t valid_count = 0U;
 
-    for (uint8_t i = 0; i < 5; i++)
-    {
-        msHcCount = 0; // ms计数清零
-        SR04_Flag = 0; // 完成测量标志清零
-        TimeOut = 1000; // 超时时间
+    for (uint8_t i = 0U; i < 5U; i++) {
+        /* 600 * 50 us = 30 ms，超过常见 HC-SR04 回波等待时间则认为超时。 */
+        uint32_t timeout = 600U;
 
-        // 开启按键引脚的GPIO端口中断
+        /* 开始一次新测量前清状态、清计数、清中断标志。 */
+        SR04_Flag = 0U;
+        DL_TimerA_setTimerCount(TIMER_SR04_INST, TIMER_SR04_INST_LOAD_VALUE);
+        DL_GPIO_clearInterruptStatus(SR04_PORT, SR04_Echo_PIN);
+        NVIC_ClearPendingIRQ(SR04_INT_IRQN);
         NVIC_EnableIRQ(SR04_INT_IRQN);
+
+        /* TRIG 输出不少于 10 us 的高电平触发测距。 */
+        SR04_TRIG(0);
+        delay_1us(2);
+        SR04_TRIG(1);
+        delay_1us(15);
+        SR04_TRIG(0);
+
+        /* 等待 ECHO 下降沿中断置位 SR04_Flag，或等待超时。 */
+        while ((SR04_Flag == 0U) && (timeout > 0U)) {
+            delay_1us(50);
+            timeout--;
+        }
+
+        /* 超时说明没有收到完整回波，本次结果丢弃。 */
+        if (timeout == 0U) {
+            Close_Timer();
+            continue;
+        }
+
+        /* 保存有效结果，两次测量之间留出短间隔，避免回波串扰。 */
+        distances[valid_count++] = distance;
         delay_ms(10);
-
-        // 触发测量
-        SR04_TRIG(0); // trig拉低信号
-        delay_1us(10); // 持续时间超过5us
-        SR04_TRIG(1); // trig拉高信号
-        delay_1us(15); // 持续时间超过10us
-        SR04_TRIG(0); // trig拉低信号
-
-        // 等待测量完成或超时
-        while (SR04_Flag == 0 && TimeOut)
-        {
-            TimeOut--;
-        }
-
-        if (TimeOut == 0) // 超时处理
-        {
-            LOG_D("SR04 Time Out!");
-            continue; // 跳过本次测量
-        }
-
-        distances[valid_count++] = distance; // 保存有效测量结果
     }
 
-    NVIC_DisableIRQ(SR04_INT_IRQN); // 关闭按键引脚的GPIO端口中断
-
-    // 检查有效测量次数
-    if (valid_count < 3) // 少于3次有效数据，无法计算去掉最高最低值的平均值
-    {
-        LOG_D("Not enough valid measurements!");
-        return 0;
+    /* 有效值太少时不做去极值平均。 */
+    if (valid_count < 3U) {
+        return 0.0f;
     }
 
-    // 排序以便去除最高值和最低值
-    for (uint8_t i = 0; i < valid_count - 1; i++)
-    {
-        for (uint8_t j = i + 1; j < valid_count; j++)
-        {
-            if (distances[i] > distances[j])
-            {
+    /* 简单冒泡排序，方便去掉最大值和最小值。 */
+    for (uint8_t i = 0U; i < valid_count - 1U; i++) {
+        for (uint8_t j = i + 1U; j < valid_count; j++) {
+            if (distances[i] > distances[j]) {
                 float temp = distances[i];
                 distances[i] = distances[j];
                 distances[j] = temp;
@@ -200,14 +159,11 @@ float SR04_GetLength(void)
         }
     }
 
-    // 计算去掉最高值和最低值后的平均值
-    float sum = 0;
-    for (uint8_t i = 1; i < valid_count - 1; i++)
-    {
+    /* 去掉排序后的首尾值，对中间值求平均。 */
+    float sum = 0.0f;
+    for (uint8_t i = 1U; i < valid_count - 1U; i++) {
         sum += distances[i];
     }
 
-    return sum / (valid_count - 2); // 返回中间值的平均值
+    return sum / (float) (valid_count - 2U);
 }
-
-
