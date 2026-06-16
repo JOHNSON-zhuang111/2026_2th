@@ -3,6 +3,8 @@
 // 声明外部变量，与 empty.c 或其他文件通信
 extern volatile u8 car_started;
 extern volatile u8 task_mode;       // 题目的档位，1-5档
+extern volatile u8 set_quanshu;
+extern volatile u8 lap_setting_active;
 
 typedef enum
 {
@@ -19,6 +21,22 @@ typedef struct
 } KeyFsm;
 
 #define KEY_DEBOUNCE_TICKS   (3U)
+
+static uint8_t key_get_selected_mode(void)
+{
+    if (task_mode < 1U || task_mode > 7U)
+    {
+        return 1U;
+    }
+
+    return task_mode;
+}
+
+static uint8_t key_get_lap_max(void)
+{
+    uint8_t mode = key_get_selected_mode();
+    return ((mode == 1U) || (mode == 4U)) ? 5U : 4U;
+}
 
 static uint8_t key_is_pressed(uint32_t pin_level, uint32_t pressed_level)
 {
@@ -94,10 +112,21 @@ static void key_a_on_pressed(void)
     // 只有未发车时才允许选单
     if (car_started == 0U)
     {
-        task_mode++;
-        if (task_mode > 7U)
+        if (lap_setting_active != 0U)
         {
-            task_mode = 1U;
+            set_quanshu++;
+            if (set_quanshu > key_get_lap_max())
+            {
+                set_quanshu = 1U;
+            }
+        }
+        else
+        {
+            task_mode++;
+            if (task_mode > 7U)
+            {
+                task_mode = 1U;
+            }
         }
     }
 }
@@ -106,11 +135,25 @@ static void key_b_on_pressed(void)
 {
     if (car_started == 0U)
     {
-        car_started = 1U;
+        uint8_t selected_mode = key_get_selected_mode();
+        if (((selected_mode == 1U) || (selected_mode == 4U)) && (lap_setting_active == 0U))
+        {
+            if (set_quanshu < 1U || set_quanshu > key_get_lap_max())
+            {
+                set_quanshu = 1U;
+            }
+            lap_setting_active = 1U;
+        }
+        else
+        {
+            lap_setting_active = 0U;
+            car_started = 1U;
+        }
     }
     else
     {
         // 运行中按下则急停
+        lap_setting_active = 0U;
         car_started = 0U;
         Set_PWM_L(0);
         Set_PWM_R(0);

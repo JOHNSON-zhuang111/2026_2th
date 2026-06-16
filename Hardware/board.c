@@ -9,11 +9,13 @@ volatile uint32_t start_time;
 #define PRINTF_ROUTE_BOTH  2
 
 #ifndef PRINTF_ROUTE_MODE
-#define PRINTF_ROUTE_MODE PRINTF_ROUTE_UART0
+#define PRINTF_ROUTE_MODE PRINTF_ROUTE_UART1
 #endif
 
 extern volatile u8 car_started;
 extern volatile u8 task_mode;
+extern volatile u8 set_quanshu;
+extern volatile u8 lap_setting_active;
 
 static void debug_uart_send_byte(uint8_t ch)
 {
@@ -63,6 +65,8 @@ void UI_ShowTaskSelect(void)
 {
 	static u8 last_task_mode = 0xFF;
 	static u8 last_car_started = 0xFF;
+	static u8 last_set_quanshu = 0xFF;
+	static u8 last_lap_setting_active = 0xFF;
 	u8 mode = task_mode;
 
 	if (mode < 1U || mode > 7U)
@@ -71,30 +75,45 @@ void UI_ShowTaskSelect(void)
 	}
 
 	// 内容未变化则不重绘，避免闪屏
-	if ((last_task_mode == mode) && (last_car_started == car_started))
+	if ((last_task_mode == mode) &&
+		(last_car_started == car_started) &&
+		(last_set_quanshu == set_quanshu) &&
+		(last_lap_setting_active == lap_setting_active))
 	{
 		return;
 	}
 
 	OLED_Clear();
-	OLED_ShowString(0, 0, (uint8_t *)"TASK SELECT", 8);
+	OLED_ShowString(0, 0, (uint8_t *)"TASK", 8);
 	OLED_ShowString(0, 2, (uint8_t *)"MODE:", 8);
 	OLED_ShowNum(36, 2, mode, 1, 8);
 
-	OLED_ShowString(0, 4, (uint8_t *)"A:NEXT", 8);
-	if (car_started == 0U)
+	if (((mode == 1U) || (mode == 4U)) && (lap_setting_active != 0U) && (car_started == 0U))
 	{
-		OLED_ShowString(0, 5, (uint8_t *)"B:START", 8);
-		OLED_ShowString(0, 7, (uint8_t *)"STATE:READY", 8);
+		OLED_ShowString(0, 4, (uint8_t *)"LAPS:", 8);
+		OLED_ShowNum(40, 4, set_quanshu, 1, 8);
+		OLED_ShowString(0, 5, (uint8_t *)"A:LAP", 8);
+		OLED_ShowString(0, 7, (uint8_t *)"B:START", 8);
 	}
 	else
 	{
-		OLED_ShowString(0, 5, (uint8_t *)"B:STOP", 8);
-		OLED_ShowString(0, 7, (uint8_t *)"STATE:RUN", 8);
+		OLED_ShowString(0, 4, (uint8_t *)"A:NEXT", 8);
+		if (car_started == 0U)
+		{
+			OLED_ShowString(0, 5, (uint8_t *)"B:START", 8);
+			OLED_ShowString(0, 7, (uint8_t *)"READY", 8);
+		}
+		else
+		{
+			OLED_ShowString(0, 5, (uint8_t *)"B:STOP", 8);
+			OLED_ShowString(0, 7, (uint8_t *)"RUN", 8);
+		}
 	}
 
 	last_task_mode = mode;
 	last_car_started = car_started;
+	last_set_quanshu = set_quanshu;
+	last_lap_setting_active = lap_setting_active;
 }
 
 

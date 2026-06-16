@@ -4,7 +4,7 @@
 #include "mode.h"
 extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
-int Basic_Speed=100;    				//基础速度，在这里修改速度，但是元素要先注释掉
+int Basic_Speed=130;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 120
 #define DRIVE_SPEED_LIMIT 180
 float Left_Speed=0,Right_Speed=0;
@@ -54,10 +54,10 @@ PID_t Xunji ={
     .OutMax=50, .OutMin=-50,
 	};
 PID_t Turn ={
-    .Kp=2.0,    // 恢复为较温和的比例
+    .Kp=1.8,    // 恢复为较温和的比例
     .Ki=0.0,    
-    .Kd=1.0,    // 保留适度微分阻尼
-    .OutMax=60, .OutMin=-60, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
+    .Kd=1.5,    // 保留适度微分阻尼
+    .OutMax=100, .OutMin=-100, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
 	};
 PID_t Straight ={
     .Kp=1.5,    
@@ -130,14 +130,19 @@ void control(void)
 	{
 		case 1U:
 			mode_1();
+            
 			break;
 		case 2U:
 			// mode_2();
-            Xunji_Speed();
+            // Xunji_Speed();
+            Turn_In_Place(90.0f);
 			break;
 		case 3U:
 			mode_3();
 			// Keep_Angle_Straight(0.0f, 50);
+			break;
+		case 4U:
+			mode_4();
 			break;
 		default:
 
@@ -203,7 +208,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	if(Speed_Out_L>DRIVE_PWM_LIMIT){Speed_Out_L=DRIVE_PWM_LIMIT;}
 	if(Speed_Out_L<-DRIVE_PWM_LIMIT){Speed_Out_L=-DRIVE_PWM_LIMIT;}
 	
-	Set_PWM_L(Speed_Out_L);
+	//Set_PWM_L(Speed_Out_L);
 	
 		
 	
@@ -213,9 +218,9 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	 if(Speed_Out_R>DRIVE_PWM_LIMIT){Speed_Out_R=DRIVE_PWM_LIMIT;}
 	 if(Speed_Out_R<-DRIVE_PWM_LIMIT){Speed_Out_R=-DRIVE_PWM_LIMIT;}
 	//printf("%.2f,%.2f,%.2f\n",speed_right.Out,Speed_Out_R,speed_right.Actual);
-	Set_PWM_R(Speed_Out_R);
+	//Set_PWM_R(Speed_Out_R);
 	//printf("%.2f,%.2f\n",speed_left.Out,speed_right.Out);
-	printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
+	//printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
 	//printf("%.3f, %.3f, %.3f, %.3f\n", speed_left.Kp, speed_left.Ki,speed_right.Kp, speed_right.Ki);
 	//printf("%.3f, %.3f\n", Turn.Kp, Turn.Kd);
 	//printf("%d\n",Basic_Speed );
@@ -350,7 +355,7 @@ void Turn_In_Place(float target_angle)
 
     // 【方案2：动态目标限幅 (虚拟目标点)】
     // 使得目标角度始终只超前实际角度一小段距离，避免产生大阶跃误差
-    float max_lead = 25.0f; // 相对放宽一点引导角，由于已经限制了 OutMax ，不用担心过载
+    float max_lead = 60.0f; // 相对放宽一点引导角，由于已经限制了 OutMax ，不用担心过载
 
     // 处理 180 到 -180 的临界跳变
     float real_diff = angle_diff(target_angle, Turn.Actual);
@@ -376,13 +381,13 @@ void Turn_In_Place(float target_angle)
 	//5. 靠近目标角时自动降速，避免惯性冲过头
 	{
 		float abs_err = ABS(real_diff);
-		float out_limit = 45.0f;
+		float out_limit = 80.0f;
 
-		if(abs_err < 60.0f) out_limit = 35.0f;
-		if(abs_err < 30.0f) out_limit = 25.0f;
-		if(abs_err < 15.0f) out_limit = 15.0f;
-		if(abs_err < 8.0f)  out_limit = 8.0f;
-		if(abs_err < 4.0f)  out_limit = 4.0f;
+		if(abs_err < 60.0f) out_limit = 80.0f;
+		if(abs_err < 30.0f) out_limit = 65.0f;
+		if(abs_err < 15.0f) out_limit = 45.0f;
+		if(abs_err < 8.0f)  out_limit = 25.0f;
+		if(abs_err < 4.0f)  out_limit = 15.0f;
 
 		if(Turn_Out > out_limit) Turn_Out = out_limit;
 		if(Turn_Out < -out_limit) Turn_Out = -out_limit;

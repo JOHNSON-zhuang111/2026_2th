@@ -20,5 +20,6 @@ uint32_t Get_TIMER_Count(void);
 void Close_Timer(void);
 void SR04_HandleEchoInterrupt(void);
 float SR04_GetLength(void);
+float SR04_GetLengthNonBlocking(void);
 
 #endif

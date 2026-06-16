@@ -5,6 +5,15 @@ volatile float distance = 0.0f;
 /* 测距完成标志：0 表示等待 ECHO 下降沿，1 表示本次测距完成。 */
 volatile uint8_t SR04_Flag = 0U;
 
+#define SR04_NB_PERIOD_CALLS 3U
+#define SR04_NB_TIMEOUT_CALLS 3U
+
+static volatile uint8_t sr04_nb_busy = 0U;
+static volatile uint8_t sr04_nb_new_data = 0U;
+static volatile float sr04_nb_last_distance = 0.0f;
+static uint8_t sr04_nb_period_cnt = 0U;
+static uint8_t sr04_nb_timeout_cnt = 0U;
+
 /**
  * @brief 初始化 HC-SR04 超声波模块。
  *
@@ -63,6 +72,23 @@ void Close_Timer(void)
     DL_TimerA_stopCounter(TIMER_SR04_INST);
 }
 
+static void SR04_StartMeasureNonBlocking(void)
+{
+    SR04_Flag = 0U;
+    sr04_nb_busy = 1U;
+    sr04_nb_timeout_cnt = 0U;
+    DL_TimerA_setTimerCount(TIMER_SR04_INST, TIMER_SR04_INST_LOAD_VALUE);
+    DL_GPIO_clearInterruptStatus(SR04_PORT, SR04_Echo_PIN);
+    NVIC_ClearPendingIRQ(SR04_INT_IRQN);
+    NVIC_EnableIRQ(SR04_INT_IRQN);
+
+    SR04_TRIG(0);
+    delay_1us(2);
+    SR04_TRIG(1);
+    delay_1us(15);
+    SR04_TRIG(0);
+}
+
 /**
  * @brief 处理 ECHO 引脚边沿中断。
  *
@@ -81,6 +107,7 @@ void SR04_HandleEchoInterrupt(void)
     if (SR04_ECHO()) {
         /* 上升沿：ECHO 变高，开始计时。 */
         SR04_Flag = 0U;
+        sr04_nb_busy = 1U;
         distance = 0.0f;
         Open_Timer();
     } else {
@@ -89,9 +116,43 @@ void SR04_HandleEchoInterrupt(void)
         SR04_Flag = 1U;
         /* HC-SR04 经验公式：距离(cm) = 高电平时间(us) / 58。 */
         distance = (float) Get_TIMER_Count() / 58.0f;
+        sr04_nb_last_distance = distance;
+        sr04_nb_new_data = 1U;
+        sr04_nb_busy = 0U;
+        sr04_nb_timeout_cnt = 0U;
     }
 
     DL_GPIO_clearInterruptStatus(SR04_PORT, SR04_Echo_PIN);
+}
+
+float SR04_GetLengthNonBlocking(void)
+{
+    float result = 0.0f;
+
+    if (sr04_nb_new_data != 0U) {
+        result = sr04_nb_last_distance;
+        sr04_nb_new_data = 0U;
+    }
+
+    if (sr04_nb_busy != 0U) {
+        sr04_nb_timeout_cnt++;
+        if (sr04_nb_timeout_cnt >= SR04_NB_TIMEOUT_CALLS) {
+            Close_Timer();
+            SR04_Flag = 0U;
+            sr04_nb_busy = 0U;
+            sr04_nb_timeout_cnt = 0U;
+            sr04_nb_period_cnt = 0U;
+        }
+        return result;
+    }
+
+    sr04_nb_period_cnt++;
+    if (sr04_nb_period_cnt >= SR04_NB_PERIOD_CALLS) {
+        sr04_nb_period_cnt = 0U;
+        SR04_StartMeasureNonBlocking();
+    }
+
+    return result;
 }
 
 /**

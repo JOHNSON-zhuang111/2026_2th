@@ -8,6 +8,72 @@ extern volatile u8 set_quanshu;
 #define MODE1_STRAIGHT_SPEED 30
 #define MODE6_STRAIGHT_BEFORE_TURN_TICKS 30U
 #define MODE1_TURNS_PER_LAP 4U
+#define MODE4_TURNS_PER_LAP 4U
+#define MODE4_OBSTACLE_DISTANCE_CM 18.0f
+#define MODE4_OBSTACLE_HIT_COUNT 2U
+#define MODE4_LINE_SEARCH_MIN_TICKS 20U
+
+static uint8_t mode4_target_laps(void)
+{
+    if (set_quanshu < 1U) {
+        return 1U;
+    }
+    if (set_quanshu > 5U) {
+        return 5U;
+    }
+    return set_quanshu;
+}
+
+static uint8_t mode4_obstacle_detected(uint16_t *sample_ticks, uint8_t *hit_count)
+{
+    (void) sample_ticks;
+    float distance_cm = SR04_GetLengthNonBlocking();
+    if ((distance_cm > 0.0f) && (distance_cm <= MODE4_OBSTACLE_DISTANCE_CM)) {
+        if (*hit_count < MODE4_OBSTACLE_HIT_COUNT) {
+            (*hit_count)++;
+        }
+    } else {
+        *hit_count = 0U;
+    }
+
+    return (*hit_count >= MODE4_OBSTACLE_HIT_COUNT) ? 1U : 0U;
+}
+
+static uint8_t mode4_turn_done(float target_angle, float current_yaw, uint8_t *stable_cnt, uint8_t stable_need)
+{
+    Turn_In_Place(target_angle);
+    float diff = angle_diff(target_angle, current_yaw);
+    if ((diff > -1.0f) && (diff < 1.0f)) {
+        (*stable_cnt)++;
+        if (*stable_cnt > stable_need) {
+            *stable_cnt = 0U;
+            return 1U;
+        }
+    } else {
+        *stable_cnt = 0U;
+    }
+
+    return 0U;
+}
+
+static void mode4_reset_state(uint8_t *left_black_cnt,
+                              uint8_t *stable_cnt,
+                              uint8_t *turn_count,
+                              uint8_t *lap_count,
+                              uint8_t *obstacle_hit_cnt,
+                              uint16_t *straight_cnt,
+                              uint16_t *cooldown_cnt,
+                              uint16_t *sr04_sample_cnt)
+{
+    *left_black_cnt = 0U;
+    *stable_cnt = 0U;
+    *turn_count = 0U;
+    *lap_count = 0U;
+    *obstacle_hit_cnt = 0U;
+    *straight_cnt = 0U;
+    *cooldown_cnt = 0U;
+    *sr04_sample_cnt = 0U;
+}
 
 static u8 allwhite(void)//全白
 {
@@ -161,6 +227,7 @@ void mode_1(void)
 
         case 4:
             // 目标圈数完成，保持停车；下一次重新启动时从 default/复位路径恢复。
+            control_reset_runtime_state();
             Set_PWM_L(0);
             Set_PWM_R(0);
             break;
@@ -428,9 +495,9 @@ void mode_3(void)
             
         case 1:
             // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
-            Keep_Angle_Straight(straight_target_angle, 50);
+            Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 50) {
+            if (straight_cnt >= 25) {
                 turn_target_angle = normalize_angle(straight_target_angle + 136.0f);
                 state = 2;
                 straight_cnt = 0;
@@ -458,9 +525,9 @@ void mode_3(void)
             break;
 
         case 3:
-            Keep_Angle_Straight(straight_target_angle, 150);//B-D
+            Keep_Angle_Straight(straight_target_angle, 160);//B-D
             straight_cnt++;
-            if (straight_cnt >= 150 && any_black()) {
+            if (straight_cnt >= 120 && any_black()) {
                 left_black_cnt++;
                 if (left_black_cnt > 2) {
                     straight_target_angle = current_yaw;
@@ -475,9 +542,9 @@ void mode_3(void)
             break;
         case 4:
         // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
-            Keep_Angle_Straight(straight_target_angle, 50);//D-C
+            Keep_Angle_Straight(straight_target_angle, 80);//D-C
             straight_cnt++;
-            if (straight_cnt >= 50) {
+            if (straight_cnt >= 25) {
                 turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
                 state = 5;
                 straight_cnt = 0;
@@ -504,7 +571,7 @@ void mode_3(void)
         case 6:
             Xunji_Speed();//D-C
             stable_cnt++;
-            if (stable_cnt > 150 && (digital(8) || digital(7))) {
+            if (stable_cnt > 120 && (digital(8) || digital(7))) {
                 right_black_cnt++;
                 if (right_black_cnt > 1) {
                     straight_target_angle = current_yaw;
@@ -521,9 +588,9 @@ void mode_3(void)
             
         case 7:
         // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
-            Keep_Angle_Straight(straight_target_angle, 50);
+            Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 50) {
+            if (straight_cnt >= 25) {
                 turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
                 state = 8;
                 straight_cnt = 0;
@@ -548,9 +615,9 @@ void mode_3(void)
             }
             break;
         case 9:
-            Keep_Angle_Straight(straight_target_angle, 150);//停车
+            Keep_Angle_Straight(straight_target_angle, 160);//停车
             straight_cnt++;
-           if (straight_cnt >= 150 && any_black()) {
+           if (straight_cnt >= 120 && any_black()) {
             lap_count++;
 
             if (lap_count >= 4) {
@@ -566,9 +633,9 @@ void mode_3(void)
             break;
 
         case 10:
-            Keep_Angle_Straight(straight_target_angle, 50);
+            Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 50) {
+            if (straight_cnt >= 25) {
                 turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
                 state = 11;
                 straight_cnt = 0;
@@ -605,6 +672,154 @@ void mode_3(void)
             // stable_cnt = 0;
             // straight_cnt = 0;
             // cooldown_cnt = 0;
+            break;
+    }
+}
+void mode_4(void)
+{
+    static uint8_t state = 0U;
+    static uint8_t left_black_cnt = 0U;
+    static uint8_t stable_cnt = 0U;
+    static uint8_t turn_count = 0U;
+    static uint8_t lap_count = 0U;
+    static uint8_t obstacle_hit_cnt = 0U;
+    static uint16_t straight_cnt = 0U;
+    static uint16_t cooldown_cnt = 0U;
+    static uint16_t sr04_sample_cnt = 0U;
+    static float base_angle = 0.0f;
+    static float straight_target_angle = 0.0f;
+    static float turn_target_angle = 0.0f;
+
+    Gyro_Struct *JY61P_Data = get_angle();
+    float current_yaw = JY61P_Data->z;
+
+    if (state == 99U) {
+        state = 0U;
+        mode4_reset_state(&left_black_cnt, &stable_cnt, &turn_count, &lap_count,
+                          &obstacle_hit_cnt, &straight_cnt, &cooldown_cnt,
+                          &sr04_sample_cnt);
+    }
+
+    switch (state) {
+        case 0U:
+            Xunji_Speed();
+
+            if (mode4_obstacle_detected(&sr04_sample_cnt, &obstacle_hit_cnt)) {
+                base_angle = current_yaw;
+                turn_target_angle = normalize_angle(base_angle - 45.0f);
+                control_reset_runtime_state();
+                state = 10U;
+                stable_cnt = 0U;
+                straight_cnt = 0U;
+                cooldown_cnt = 0U;
+                break;
+            }
+
+            if (digital(1)) {
+                left_black_cnt++;
+                if (left_black_cnt > 1U) {
+                    straight_target_angle = current_yaw;
+                    state = 1U;
+                    left_black_cnt = 0U;
+                    stable_cnt = 0U;
+                    straight_cnt = 0U;
+                }
+            } else {
+                left_black_cnt = 0U;
+            }
+            break;
+
+        case 1U:
+            Keep_Angle_Straight(straight_target_angle, 70);
+            straight_cnt++;
+            if (straight_cnt >= 30U) {
+                turn_target_angle = normalize_angle(straight_target_angle + 70.0f);
+                state = 2U;
+                straight_cnt = 0U;
+                stable_cnt = 0U;
+            }
+            break;
+
+        case 2U:
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 0U)) {
+                turn_count++;
+                if (turn_count >= MODE4_TURNS_PER_LAP) {
+                    turn_count = 0U;
+                    lap_count++;
+                }
+
+                if (lap_count >= mode4_target_laps()) {
+                    control_reset_runtime_state();
+                    Set_PWM_L(0);
+                    Set_PWM_R(0);
+                    car_started = 0U;
+                    state = 99U;
+                    break;
+                }
+
+                state = 3U;
+                cooldown_cnt = 0U;
+            }
+            break;
+
+        case 3U:
+            Xunji_Speed();
+            cooldown_cnt++;
+            if (mode4_obstacle_detected(&sr04_sample_cnt, &obstacle_hit_cnt)) {
+                base_angle = current_yaw;
+                turn_target_angle = normalize_angle(base_angle - 45.0f);
+                control_reset_runtime_state();
+                state = 10U;
+                stable_cnt = 0U;
+                straight_cnt = 0U;
+                cooldown_cnt = 0U;
+                break;
+            }
+            if ((cooldown_cnt > 30U) && !digital(1)) {
+                state = 0U;
+                cooldown_cnt = 0U;
+            }
+            break;
+
+        case 10U:
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+                straight_target_angle = turn_target_angle;
+                state = 11U;
+                straight_cnt = 0U;
+            }
+            break;
+
+        case 11U:
+            Keep_Angle_Straight(straight_target_angle, 55);
+            straight_cnt++;
+            if ((straight_cnt >= 80U) ||
+                ((straight_cnt > MODE4_LINE_SEARCH_MIN_TICKS) && any_black())) {
+                turn_target_angle = base_angle;
+                state = 12U;
+                stable_cnt = 0U;
+                straight_cnt = 0U;
+            }
+            break;
+
+        case 12U:
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+                state = 3U;
+                cooldown_cnt = 0U;
+                obstacle_hit_cnt = 0U;
+                sr04_sample_cnt = 0U;
+            }
+            break;
+
+        case 99U:
+            Set_PWM_L(0);
+            Set_PWM_R(0);
+            break;
+
+        default:
+            state = 0U;
+            mode4_reset_state(&left_black_cnt, &stable_cnt, &turn_count, &lap_count,
+                              &obstacle_hit_cnt, &straight_cnt, &cooldown_cnt,
+                              &sr04_sample_cnt);
             break;
     }
 }
