@@ -7,7 +7,7 @@ static volatile u8 control_tick_pending = 0U;
 #define XUNJI_UART_DEBUG 1U
 #define XUNJI_UART_DEBUG_PERIOD_MS 100U
 #define SR04_UART_DEBUG 0U
-#define SR04_UART_DEBUG_PERIOD_MS 200U
+#define SR04_UART_DEBUG_PERIOD_MS 50U
 
 volatile u8 set_quanshu = 1U; // 设置目标圈数，可通过 VOFA 命令 L1 修改
 volatile u8 lap_setting_active = 0U; // 第一题圈数设置阶段标志位

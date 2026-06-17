@@ -2,7 +2,7 @@
  * These arguments were used when this file was generated. They will be automatically applied on subsequent loads
  * via the GUI or CLI. Run CLI with '--help' for additional information on how to override these arguments.
  * @cliArgs --device "MSPM0G350X" --part "Default" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
- * @v2CliArgs --device "MSPM0G3505" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
+ * @v2CliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
  * @versions {"tool":"1.27.0+4565"}
  */
 
@@ -54,10 +54,14 @@ mux8.inputSelect = "HSCLKMUX_SYSPLL2X";
 
 ADC121.$name                      = "ADC12_0";
 ADC121.resolution                 = "DL_ADC12_SAMP_CONV_RES_10_BIT";
+ADC121.peripheral.$assign         = "ADC1";
 ADC121.peripheral.adcPin0.$assign = "PA15";
 ADC121.adcPin0Config.$name        = "ti_driverlib_gpio_GPIOPinGeneric0";
 
-const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
+const Board                       = scripting.addModule("/ti/driverlib/Board", {}, false);
+Board.peripheral.$assign          = "DEBUGSS";
+Board.peripheral.swclkPin.$assign = "PA20";
+Board.peripheral.swdioPin.$assign = "PA19";
 
 GPIO1.$name                              = "KEY";
 GPIO1.associatedPins.create(2);
@@ -71,6 +75,7 @@ GPIO1.associatedPins[1].direction        = "INPUT";
 GPIO1.associatedPins[1].invert           = "ENABLE";
 GPIO1.associatedPins[1].internalResistor = "PULL_DOWN";
 GPIO1.associatedPins[1].pin.$assign      = "PA18";
+scripting.suppress("Solution has changed,The suggested solution was invalid\\.  As such, this specific entry differs from what was suggested", GPIO1.associatedPins[0], "pin");
 
 GPIO2.$name                         = "LED";
 GPIO2.associatedPins[0].$name       = "led";
@@ -152,6 +157,8 @@ GPIO7.associatedPins[6].pin.$assign = "PB17";
 GPIO7.associatedPins[7].$name       = "XUNJI7";
 GPIO7.associatedPins[7].direction   = "INPUT";
 GPIO7.associatedPins[7].pin.$assign = "PB12";
+scripting.suppress("Solution has changed,The suggested solution was invalid\\.  As such, this specific entry differs from what was suggested", GPIO7.associatedPins[1], "pin");
+scripting.suppress("Solution has changed,The suggested solution was invalid\\.  As such, this specific entry differs from what was suggested", GPIO7.associatedPins[7], "pin");
 
 GPIO8.$name                         = "GPIO_OLED";
 GPIO8.associatedPins.create(2);
@@ -205,6 +212,7 @@ PWM1.ccp0PinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric4";
 PWM1.ccp1PinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric5";
 
 SYSCTL.forceDefaultClkConfig = true;
+SYSCTL.peripheral.$assign    = "SYSCTL";
 
 SYSTICK.periodEnable  = true;
 SYSTICK.systickEnable = true;
@@ -231,30 +239,23 @@ UART1.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
 UART1.enableDMARX              = false;
 UART1.enableDMATX              = false;
 UART1.enabledInterrupts        = ["RX","RX_TIMEOUT_ERROR"];
+UART1.peripheral.$assign       = "UART0";
 UART1.peripheral.rxPin.$assign = "PA11";
 UART1.peripheral.txPin.$assign = "PA10";
 UART1.txPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric2";
 UART1.rxPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric3";
 
-UART2.$name             = "UART_1";
-UART2.targetBaudRate    = 115200;
-UART2.enableFIFO        = true;
-UART2.rxFifoThreshold   = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
-UART2.enabledInterrupts = ["RX","RX_TIMEOUT_ERROR"];
-UART2.txPinConfig.$name = "ti_driverlib_gpio_GPIOPinGeneric7";
-UART2.rxPinConfig.$name = "ti_driverlib_gpio_GPIOPinGeneric8";
+UART2.$name                    = "UART_1";
+UART2.targetBaudRate           = 115200;
+UART2.enableFIFO               = true;
+UART2.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
+UART2.enabledInterrupts        = ["RX","RX_TIMEOUT_ERROR"];
+UART2.peripheral.$assign       = "UART1";
+UART2.peripheral.rxPin.$assign = "PA9";
+UART2.peripheral.txPin.$assign = "PB4";
+UART2.txPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric7";
+UART2.rxPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric8";
+scripting.suppress("Solution has changed,The suggested solution was invalid\\.  As such, this specific entry differs from what was suggested", UART2.peripheral, "txPin");
 
-/**
- * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
- * version of the tool will not impact the pinmux you originally saw.  These lines can be completely deleted in order to
- * re-solve from scratch.
- */
-ADC121.peripheral.$suggestSolution         = "ADC1";
-Board.peripheral.$suggestSolution          = "DEBUGSS";
-Board.peripheral.swclkPin.$suggestSolution = "PA20";
-Board.peripheral.swdioPin.$suggestSolution = "PA19";
-SYSCTL.peripheral.$suggestSolution         = "SYSCTL";
-UART1.peripheral.$suggestSolution          = "UART0";
-UART2.peripheral.$suggestSolution          = "UART1";
-UART2.peripheral.rxPin.$suggestSolution    = "PA9";
-UART2.peripheral.txPin.$suggestSolution    = "PB4";
+const ProjectConfig              = scripting.addModule("/ti/project_config/ProjectConfig", {}, false);
+ProjectConfig.migrationCondition = true;

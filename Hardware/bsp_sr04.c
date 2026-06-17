@@ -5,11 +5,10 @@ volatile float distance = 0.0f;
 /* 测距完成标志：0 表示等待 ECHO 下降沿，1 表示本次测距完成。 */
 volatile uint8_t SR04_Flag = 0U;
 
-#define SR04_NB_PERIOD_CALLS 3U
-#define SR04_NB_TIMEOUT_CALLS 3U
+#define SR04_NB_PERIOD_CALLS 2U
+#define SR04_NB_TIMEOUT_CALLS 2U
 
 static volatile uint8_t sr04_nb_busy = 0U;
-static volatile uint8_t sr04_nb_new_data = 0U;
 static volatile float sr04_nb_last_distance = 0.0f;
 static uint8_t sr04_nb_period_cnt = 0U;
 static uint8_t sr04_nb_timeout_cnt = 0U;
@@ -117,7 +116,6 @@ void SR04_HandleEchoInterrupt(void)
         /* HC-SR04 经验公式：距离(cm) = 高电平时间(us) / 58。 */
         distance = (float) Get_TIMER_Count() / 58.0f;
         sr04_nb_last_distance = distance;
-        sr04_nb_new_data = 1U;
         sr04_nb_busy = 0U;
         sr04_nb_timeout_cnt = 0U;
     }
@@ -127,12 +125,7 @@ void SR04_HandleEchoInterrupt(void)
 
 float SR04_GetLengthNonBlocking(void)
 {
-    float result = 0.0f;
-
-    if (sr04_nb_new_data != 0U) {
-        result = sr04_nb_last_distance;
-        sr04_nb_new_data = 0U;
-    }
+    float result = sr04_nb_last_distance;
 
     if (sr04_nb_busy != 0U) {
         sr04_nb_timeout_cnt++;

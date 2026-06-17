@@ -4,9 +4,11 @@
 #include "mode.h"
 extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
-int Basic_Speed=130;    				//基础速度，在这里修改速度，但是元素要先注释掉
+int Basic_Speed=140;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 120
 #define DRIVE_SPEED_LIMIT 180
+#define SPEED_PRINTF_DEBUG 1U
+#define SPEED_PRINTF_PERIOD_TICKS 10U
 float Left_Speed=0,Right_Speed=0;
 float Turn_factor=1.0;
 
@@ -20,13 +22,13 @@ static float speed_buffer[2][SPEED_FILTER_SIZE] ={0};
 static u8 speed_index[2]={0};
 // 1. 循迹速度环PID参数（兼作实际运行状态变量）
 PID_t speed_left ={
-    .Kp=0.165,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
+    .Kp=0.5,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
     .Ki=0.045,    // 保持积分不变
     .Kd=0.0,    
     .OutMax=150, .OutMin=-150,
 };
 PID_t speed_right ={
-    .Kp=0.165,  
+    .Kp=0.5,  
     .Ki=0.045,  
     .Kd=0.0,  
     .OutMax=150, .OutMin=-150,
@@ -142,6 +144,7 @@ void control(void)
 			// Keep_Angle_Straight(0.0f, 50);
 			break;
 		case 4U:
+            Basic_Speed=80;
 			mode_4();
 			break;
 		default:
@@ -208,7 +211,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	if(Speed_Out_L>DRIVE_PWM_LIMIT){Speed_Out_L=DRIVE_PWM_LIMIT;}
 	if(Speed_Out_L<-DRIVE_PWM_LIMIT){Speed_Out_L=-DRIVE_PWM_LIMIT;}
 	
-	//Set_PWM_L(Speed_Out_L);
+	
 	
 		
 	
@@ -217,13 +220,11 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	 Speed_Out_R=speed_right.Out;
 	 if(Speed_Out_R>DRIVE_PWM_LIMIT){Speed_Out_R=DRIVE_PWM_LIMIT;}
 	 if(Speed_Out_R<-DRIVE_PWM_LIMIT){Speed_Out_R=-DRIVE_PWM_LIMIT;}
-	//printf("%.2f,%.2f,%.2f\n",speed_right.Out,Speed_Out_R,speed_right.Actual);
-	//Set_PWM_R(Speed_Out_R);
-	//printf("%.2f,%.2f\n",speed_left.Out,speed_right.Out);
-	//printf("speed: %.2f, %.2f, %.2f, %.2f\n", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
-	//printf("%.3f, %.3f, %.3f, %.3f\n", speed_left.Kp, speed_left.Ki,speed_right.Kp, speed_right.Ki);
-	//printf("%.3f, %.3f\n", Turn.Kp, Turn.Kd);
-	//printf("%d\n",Basic_Speed );
+	
+	Set_PWM_L(Speed_Out_L);
+    Set_PWM_R(Speed_Out_R);
+    //printf("%.2f, %.2f,%.2f,%.2f\n\r", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
+	
 }
 
 
