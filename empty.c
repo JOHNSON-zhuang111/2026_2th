@@ -17,6 +17,29 @@ Gyro_Struct *JY61P_Data ; // 全局陀螺仪数据指针，供中断和主循环
 
 int main(void)
 {
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	//初始化
 	uint8_t xj_line_1[20];
     SYSCFG_DL_init();

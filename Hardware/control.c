@@ -4,7 +4,7 @@
 #include "mode.h"
 extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
-int Basic_Speed=220;    				//基础速度，在这里修改速度，但是元素要先注释掉
+int Basic_Speed=180;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 120
 #define DRIVE_SPEED_LIMIT 300
 #define SPEED_PRINTF_DEBUG 0U
@@ -53,7 +53,7 @@ PID_t Xunji ={
     .Kp=0.3,    
     .Ki=0.0,    // 保持积分不变
     .Kd=1.5,    
-    .OutMax=60, .OutMin=-60,
+    .OutMax=80, .OutMin=-80,
 	};
 PID_t Turn ={
     .Kp=1.8,    // 恢复为较温和的比例
@@ -131,11 +131,11 @@ void control(void)
 	switch (mode)
 	{
 		case 1U:
-			// mode_1();
-            Xunji_Speed();
+			mode_1();
+            // Xunji_Speed();
 			break;
 		case 2U:
-			// mode_2();
+			mode_2();
             // Xunji_Speed();
             // Turn_In_Place(90.0f);
 			break;
@@ -322,13 +322,13 @@ void Xunji_Speed(void)
 	
 	if(Place_Out >= 0) //err
 		{ 
-			k = Place_Out * 0.01; // 计算转向系数
+			k = Place_Out * 0.015; // 计算转向系数
 			Left_Speed = Basic_Speed * (1 - k);   // 如果Place_Out大于0，左轮减速，右轮加速
 			Right_Speed = Basic_Speed * (1 + k*Turn_factor); // 右轮加速，Turn_factor为转向因子
 		} 
 		else 
 		{ 
-		k = -Place_Out * 0.01; // 取绝对值计算转向系数
+		k = -Place_Out * 0.015; // 取绝对值计算转向系数
 		Left_Speed = Basic_Speed * (1 + k*Turn_factor); // 如果Place_Out小于0，左轮加速，右轮减速
 		Right_Speed = Basic_Speed * (1 - k); // 右轮减速
 		} 

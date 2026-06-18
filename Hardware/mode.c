@@ -217,7 +217,7 @@ void mode_1(void)
             Keep_Angle_Straight(straight_target_angle, 60);
             straight_cnt++;
             if (straight_cnt >= 15) {
-                turn_target_angle = normalize_angle(straight_target_angle + 90.0f);
+                turn_target_angle = normalize_angle(straight_target_angle + 80.0f);
                 state = 2;
                 straight_cnt = 0;
                 stable_cnt = 0;
