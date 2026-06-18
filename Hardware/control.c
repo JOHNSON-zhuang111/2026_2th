@@ -62,7 +62,7 @@ PID_t Turn ={
     .OutMax=100, .OutMin=-100, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
 	};
 PID_t Straight ={
-    .Kp=2.5,    
+    .Kp=3.0,    
     .Ki=0.0,    
     .Kd=5.0,    
     .OutMax=100, .OutMin=-100,
@@ -543,8 +543,8 @@ void Keep_Angle_Straight(float target_angle, int base_speed)
     Angle_Out = Place_Control(&Straight);
     
     // 3. 限制最大修正力度 (不能因为车子被撞歪了就原地乱转)
-    if(Angle_Out > 40) Angle_Out = 40;
-    if(Angle_Out < -40) Angle_Out = -40;
+    if(Angle_Out > 80) Angle_Out = 80;
+    if(Angle_Out < -80) Angle_Out = -80;
 
     // 4. 将修正量叠加给左右电机的基础速度
 	// 注意极性：如果发现车子偏了之后反倒越来越偏，把这里的 + 和 - 互换即可！
