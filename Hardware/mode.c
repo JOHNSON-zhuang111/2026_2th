@@ -8,20 +8,24 @@ extern volatile u8 set_quanshu;
 #define MODE1_STRAIGHT_SPEED 30
 #define MODE6_STRAIGHT_BEFORE_TURN_TICKS 30U
 #define MODE1_TURNS_PER_LAP 4U
+#define MODE3_TURN_EXIT_DEG 2.0f
+#define MODE3_BRAKE_SPEED 80.0f
+#define MODE3_BRAKE_TICKS 5U
 
 /* 模式4参数：tick 都按 control() 的调用周期计数，实车上主要调这些值。 */
 #define MODE4_TURNS_PER_LAP 4U
 #define MODE4_OBSTACLE_DISTANCE_CM 18.0f
 #define MODE4_OBSTACLE_HIT_COUNT 2U
 #define MODE4_CORNER_STRAIGHT_TICKS 30U
-#define MODE4_CORNER_COOLDOWN_TICKS 30U
-#define MODE4_LINE_SEARCH_MIN_TICKS 12U
+#define MODE4_CORNER_COOLDOWN_TICKS 0U
+#define MODE4_LINE_SEARCH_MIN_TICKS 30U
 #define MODE4_LINE_SEARCH_TIMEOUT_TICKS 80U
-#define MODE4_AVOID_SHIFT_TICKS 26U
-#define MODE4_AVOID_PASS_TICKS 45U
-#define MODE4_AVOID_SPEED 75
+#define MODE4_LINE_AFTER_HIT_TICKS 38U
+#define MODE4_AVOID_SHIFT_TICKS 80U
+#define MODE4_AVOID_PASS_TICKS 80U
+#define MODE4_AVOID_SPEED 90
 #define MODE4_AVOID_ANGLE_DEG 45.0f
-#define MODE4_SR04_PRINTF_DEBUG 1U
+#define MODE4_SR04_PRINTF_DEBUG 0U
 #define MODE4_SR04_PRINTF_PERIOD_TICKS 5U
 
 
@@ -210,10 +214,10 @@ void mode_1(void)
 
         case 1:
             // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
-            Keep_Angle_Straight(straight_target_angle, 80);
+            Keep_Angle_Straight(straight_target_angle, 60);
             straight_cnt++;
-            if (straight_cnt >= 30) {
-                turn_target_angle = normalize_angle(straight_target_angle + 70.0f);
+            if (straight_cnt >= 15) {
+                turn_target_angle = normalize_angle(straight_target_angle + 90.0f);
                 state = 2;
                 straight_cnt = 0;
                 stable_cnt = 0;
@@ -221,11 +225,11 @@ void mode_1(void)
             break;
 
         case 2:
-            // 原地左转 70 度；角度连续稳定后进入冷却循迹阶段。
+            // 原地左转 90 度；角度连续稳定后进入冷却循迹阶段。
             Turn_In_Place(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -1.0f && diff < 1.0f) {
+                if (diff > -2.0f && diff < 2.0f) {
                     stable_cnt++;
                     if (stable_cnt > 0) {
                         turn_count++;
@@ -520,7 +524,7 @@ void mode_3(void)
             // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。A-B
             Xunji_Speed();
             stable_cnt++;
-            if (stable_cnt>30 && (digital(1)||digital(2))) {
+            if (stable_cnt>60 && (digital(1))) {
                 left_black_cnt++;
                 if (left_black_cnt > 0) {
                     straight_target_angle = current_yaw;
@@ -538,8 +542,8 @@ void mode_3(void)
             // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
             Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 30) {
-                turn_target_angle = normalize_angle(straight_target_angle + 136.0f);
+            if (straight_cnt >= 18) {
+                turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
                 state = 2;
                 straight_cnt = 0;
                 stable_cnt = 0;
@@ -551,22 +555,17 @@ void mode_3(void)
             Turn_In_Place(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -1.0f && diff < 1.0f) {
+                if (diff > -MODE3_TURN_EXIT_DEG && diff < MODE3_TURN_EXIT_DEG) {
                     straight_target_angle = turn_target_angle;
-                    stable_cnt++;
-                    if (stable_cnt > 1) {
-                        state = 3;
-                        stable_cnt = 0;
-                        cooldown_cnt = 0;
-                    }
-                } else {
+                    state = 3;
                     stable_cnt = 0;
+                    cooldown_cnt = 0;
                 }
             }
             break;
 
         case 3:
-            Keep_Angle_Straight(straight_target_angle,180);//B-D
+            Keep_Angle_Straight(straight_target_angle,300);//B-D
             straight_cnt++;
             if (straight_cnt >= 0 && any_black()) {
                 left_black_cnt++;
@@ -585,7 +584,7 @@ void mode_3(void)
         // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
             Keep_Angle_Straight(straight_target_angle, 80);//D-C
             straight_cnt++;
-            if (straight_cnt >= 30) {
+            if (straight_cnt >= 18) {
                 turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
                 state = 5;
                 straight_cnt = 0;
@@ -596,23 +595,18 @@ void mode_3(void)
             Turn_In_Place(turn_target_angle);//D-C
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -1.0f && diff < 1.0f) {
-                    stable_cnt++;
-                    if (stable_cnt > 0) {
-                        straight_target_angle = current_yaw;
-                        state = 6;
-                        stable_cnt = 0;
-                        cooldown_cnt = 0;
-                    }
-                } else {
+                if (diff > -MODE3_TURN_EXIT_DEG && diff < MODE3_TURN_EXIT_DEG) {
+                    straight_target_angle = turn_target_angle;
+                    state = 6;
                     stable_cnt = 0;
+                    cooldown_cnt = 0;
                 }
             }
             break;
         case 6:
             Xunji_Speed();//D-C
             stable_cnt++;
-            if (stable_cnt >40 && (digital(8) || digital(7))) {
+            if (stable_cnt >60 && (digital(8) || digital(7))) {
                 right_black_cnt++;
                 if (right_black_cnt > 0) {
                     straight_target_angle = current_yaw;
@@ -631,8 +625,8 @@ void mode_3(void)
         // 保持触发瞬间的航向短直行一段距离，避免直接原地转弯压在线上。
             Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 30) {
-                turn_target_angle = normalize_angle(straight_target_angle - 135.0f);
+            if (straight_cnt >= 18) {
+                turn_target_angle = normalize_angle(straight_target_angle - 133.0f);
                 state = 8;
                 straight_cnt = 0;
                 stable_cnt = 0;
@@ -642,21 +636,16 @@ void mode_3(void)
             Turn_In_Place(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -1.0f && diff < 1.0f) {
-                    stable_cnt++;
-                    if (stable_cnt > 0) {
-                        straight_target_angle = current_yaw;
-                        state = 9;
-                        stable_cnt = 0;
-                        cooldown_cnt = 0;
-                    }
-                } else {
+                if (diff > -MODE3_TURN_EXIT_DEG && diff < MODE3_TURN_EXIT_DEG) {
+                    straight_target_angle = turn_target_angle;
+                    state = 9;
                     stable_cnt = 0;
+                    cooldown_cnt = 0;
                 }
             }
             break;
         case 9:
-            Keep_Angle_Straight(straight_target_angle, 160);//停车
+            Keep_Angle_Straight(straight_target_angle, 300);//停车
             straight_cnt++;
            if (straight_cnt >= 0 && any_black()) {
             lap_count++;
@@ -676,7 +665,7 @@ void mode_3(void)
         case 10:
             Keep_Angle_Straight(straight_target_angle, 80);
             straight_cnt++;
-            if (straight_cnt >= 30) {
+            if (straight_cnt >= 18) {
                 turn_target_angle = normalize_angle(straight_target_angle + 135.0f);
                 state = 11;
                 straight_cnt = 0;
@@ -688,23 +677,24 @@ void mode_3(void)
             Turn_In_Place(turn_target_angle);
             {
                 float diff = angle_diff(turn_target_angle, current_yaw);
-                if (diff > -1.0f && diff < 1.0f) {
-                    stable_cnt++;
-                    if (stable_cnt > 0) {
-                        straight_target_angle = current_yaw;
-                        state = 0; // 继续下一圈
-                        stable_cnt = 0;
-                        cooldown_cnt = 0;
-                    }
-                } else {
+                if (diff > -MODE3_TURN_EXIT_DEG && diff < MODE3_TURN_EXIT_DEG) {
+                    straight_target_angle = turn_target_angle;
+                    state = 0; // 继续下一圈
                     stable_cnt = 0;
+                    cooldown_cnt = 0;
                 }
             }
             break;
         case 12:
-            control_reset_runtime_state();
-            Set_PWM_L(0);
-            Set_PWM_R(0);
+            if (straight_cnt < MODE3_BRAKE_TICKS) {
+                Left_Speed = -MODE3_BRAKE_SPEED;
+                Right_Speed = -MODE3_BRAKE_SPEED;
+                straight_cnt++;
+            } else {
+                control_reset_runtime_state();
+                Set_PWM_L(0);
+                Set_PWM_R(0);
+            }
             break;
         default:
             // // 异常状态保护：所有计数清零并回到普通循迹。
@@ -724,7 +714,7 @@ void mode_4(void)
      * 1  拐角前短直行
      * 2  原地左转并累计圈数
      * 3  转弯后继续循迹，等待离开边线
-     * 10~16 避障：偏出、通过、回线、回正
+     * 10~17 避障：偏出、通过、回线、回正
      * 99 停车保持
      */
     static uint8_t state = 0U;
@@ -766,15 +756,15 @@ void mode_4(void)
                 break;
             }
 
-            if (digital(1) || digital(2)) {
-                left_black_cnt++;
-                if (left_black_cnt > 1U) {
+            if (digital(1)|| digital(2) ) {
+                
+                
                     straight_target_angle = current_yaw;
                     state = 1U;
                     left_black_cnt = 0U;
                     stable_cnt = 0U;
                     straight_cnt = 0U;
-                }
+                
             } else {
                 left_black_cnt = 0U;
             }
@@ -785,7 +775,7 @@ void mode_4(void)
             Keep_Angle_Straight(straight_target_angle, MODE4_AVOID_SPEED);
             straight_cnt++;
             if (straight_cnt >= MODE4_CORNER_STRAIGHT_TICKS) {
-                turn_target_angle = normalize_angle(straight_target_angle + 70.0f);
+                turn_target_angle = normalize_angle(straight_target_angle + 90.0f);
                 state = 2U;
                 straight_cnt = 0U;
                 stable_cnt = 0U;
@@ -840,7 +830,7 @@ void mode_4(void)
 
         case 10U:
             /* 避障第1步：向内侧偏转。 */
-            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 0U)) {
                 straight_target_angle = turn_target_angle;
                 state = 11U;
                 straight_cnt = 0U;
@@ -851,7 +841,7 @@ void mode_4(void)
             /* 避障第2步：斜向离开原边线，拉开横向距离。 */
             Keep_Angle_Straight(straight_target_angle, MODE4_AVOID_SPEED);
             straight_cnt++;
-            if (straight_cnt >= MODE4_AVOID_SHIFT_TICKS) {
+            if (straight_cnt >= 45) {
                 turn_target_angle = base_angle;
                 state = 12U;
                 stable_cnt = 0U;
@@ -861,7 +851,7 @@ void mode_4(void)
 
         case 12U:
             /* 避障第3步：转回原航向。 */
-            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 0U)) {
                 straight_target_angle = base_angle;
                 state = 13U;
                 straight_cnt = 0U;
@@ -872,7 +862,7 @@ void mode_4(void)
             /* 避障第4步：保持原航向，从障碍物侧面通过。 */
             Keep_Angle_Straight(straight_target_angle, MODE4_AVOID_SPEED);
             straight_cnt++;
-            if (straight_cnt >= MODE4_AVOID_PASS_TICKS) {
+            if (straight_cnt >= 38) {
                 turn_target_angle = normalize_angle(base_angle - MODE4_AVOID_ANGLE_DEG);
                 state = 14U;
                 stable_cnt = 0U;
@@ -882,7 +872,7 @@ void mode_4(void)
 
         case 14U:
             /* 避障第5步：向边线方向偏转，开始找回循迹线。 */
-            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 0U)) {
                 straight_target_angle = turn_target_angle;
                 state = 15U;
                 straight_cnt = 0U;
@@ -890,21 +880,30 @@ void mode_4(void)
             break;
 
         case 15U:
-            /* 避障第6步：斜向回线，看到黑线或超时后回正。 */
+            /* 避障第6步：斜向回线，任意探头碰线后进入短直行。 */
             Keep_Angle_Straight(straight_target_angle, MODE4_AVOID_SPEED);
             straight_cnt++;
-            if (((straight_cnt > MODE4_LINE_SEARCH_MIN_TICKS) && any_black()) ||
-                (straight_cnt >= MODE4_LINE_SEARCH_TIMEOUT_TICKS)) {
-                turn_target_angle = base_angle;
+            if (any_black()) {
                 state = 16U;
-                stable_cnt = 0U;
                 straight_cnt = 0U;
             }
             break;
 
         case 16U:
-            /* 避障第7步：回到原航向，重新交给循迹流程。 */
-            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 1U)) {
+            /* 避障第7步：碰线后继续斜直行一小段，再准备回正。 */
+            Keep_Angle_Straight(straight_target_angle, 75);
+            straight_cnt++;
+            if (straight_cnt >= MODE4_LINE_AFTER_HIT_TICKS) {
+                turn_target_angle = base_angle;
+                state = 17U;
+                stable_cnt = 0U;
+                straight_cnt = 0U;
+            }
+            break;
+
+        case 17U:
+            /* 避障第8步：回到原航向，重新交给循迹流程。 */
+            if (mode4_turn_done(turn_target_angle, current_yaw, &stable_cnt, 0U)) {
                 obstacle_hit_cnt = 0U;
                 state = 3U;
                 cooldown_cnt = 0U;

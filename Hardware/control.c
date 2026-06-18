@@ -4,10 +4,10 @@
 #include "mode.h"
 extern volatile u8 task_mode;
 int sensor_err=0,final_err=0;
-int Basic_Speed=140;    				//基础速度，在这里修改速度，但是元素要先注释掉
+int Basic_Speed=220;    				//基础速度，在这里修改速度，但是元素要先注释掉
 #define DRIVE_PWM_LIMIT 120
-#define DRIVE_SPEED_LIMIT 180
-#define SPEED_PRINTF_DEBUG 1U
+#define DRIVE_SPEED_LIMIT 300
+#define SPEED_PRINTF_DEBUG 0U
 #define SPEED_PRINTF_PERIOD_TICKS 10U
 float Left_Speed=0,Right_Speed=0;
 float Turn_factor=1.0;
@@ -22,14 +22,14 @@ static float speed_buffer[2][SPEED_FILTER_SIZE] ={0};
 static u8 speed_index[2]={0};
 // 1. 循迹速度环PID参数（兼作实际运行状态变量）
 PID_t speed_left ={
-    .Kp=0.5,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
-    .Ki=0.045,    // 保持积分不变
+    .Kp=0.105,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
+    .Ki=0.034,    // 保持积分不变
     .Kd=0.0,    
     .OutMax=150, .OutMin=-150,
 };
 PID_t speed_right ={
-    .Kp=0.5,  
-    .Ki=0.045,  
+    .Kp=0.105,  
+    .Ki=0.034,  
     .Kd=0.0,  
     .OutMax=150, .OutMin=-150,
 };
@@ -50,10 +50,10 @@ PID_t turn_speed_right ={
 
 // 3. 位置式PID参数
 PID_t Xunji ={
-    .Kp=1.2,    // 继续减小增量式的 Kp（抑制高频突变毛刺）
+    .Kp=0.3,    
     .Ki=0.0,    // 保持积分不变
     .Kd=1.5,    
-    .OutMax=50, .OutMin=-50,
+    .OutMax=60, .OutMin=-60,
 	};
 PID_t Turn ={
     .Kp=1.8,    // 恢复为较温和的比例
@@ -62,10 +62,10 @@ PID_t Turn ={
     .OutMax=100, .OutMin=-100, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
 	};
 PID_t Straight ={
-    .Kp=1.5,    
+    .Kp=2.5,    
     .Ki=0.0,    
-    .Kd=3.0,    
-    .OutMax=50, .OutMin=-50,
+    .Kd=5.0,    
+    .OutMax=100, .OutMin=-100,
 	};
 
 // 原地转向角速度内环参数，主要用于锐角急转。
@@ -131,20 +131,20 @@ void control(void)
 	switch (mode)
 	{
 		case 1U:
-			mode_1();
-            
+			// mode_1();
+            Xunji_Speed();
 			break;
 		case 2U:
 			// mode_2();
             // Xunji_Speed();
-            Turn_In_Place(90.0f);
+            // Turn_In_Place(90.0f);
 			break;
 		case 3U:
 			mode_3();
 			// Keep_Angle_Straight(0.0f, 50);
 			break;
 		case 4U:
-            Basic_Speed=80;
+            Basic_Speed=120;
 			mode_4();
 			break;
 		default:
@@ -223,7 +223,7 @@ MB_RPM = Calculate_Motor_RPM(Get_Encoder_countB, 20); // 获取右轮转速 (单
 	
 	Set_PWM_L(Speed_Out_L);
     Set_PWM_R(Speed_Out_R);
-    //printf("%.2f, %.2f,%.2f,%.2f\n\r", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
+    printf("%.2f, %.2f,%.2f,%.2f\n\r", speed_left.Target, speed_right.Target, speed_left.Actual, speed_right.Actual);
 	
 }
 
@@ -543,8 +543,8 @@ void Keep_Angle_Straight(float target_angle, int base_speed)
     Angle_Out = Place_Control(&Straight);
     
     // 3. 限制最大修正力度 (不能因为车子被撞歪了就原地乱转)
-    if(Angle_Out > 20) Angle_Out = 20;
-    if(Angle_Out < -20) Angle_Out = -20;
+    if(Angle_Out > 40) Angle_Out = 40;
+    if(Angle_Out < -40) Angle_Out = -40;
 
     // 4. 将修正量叠加给左右电机的基础速度
 	// 注意极性：如果发现车子偏了之后反倒越来越偏，把这里的 + 和 - 互换即可！

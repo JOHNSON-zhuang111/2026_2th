@@ -153,7 +153,7 @@ float Right_err()
         }
           // 直角次数加1
         //记录直角次数，在每次执行新的任务时进行清零
-        return 4.0f;
+        return 1.0f;
     }
     // // 右直角检测（左侧传感器激活，右侧3个同时低电平）
     // else if (digital(1) == 0 && digital(2) == 0 && digital(3) == 0  &&digital(8) == 1 )

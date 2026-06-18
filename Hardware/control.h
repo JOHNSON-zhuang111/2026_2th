@@ -38,6 +38,8 @@ extern PID_t Straight;
 extern PID_t Xunji;
 extern TurnRate_t TurnRate;
 extern int Basic_Speed;
+extern float Left_Speed;
+extern float Right_Speed;
 void control_reset_xunji_pid_runtime(void);
 void control_reset_runtime_state(void);
 
