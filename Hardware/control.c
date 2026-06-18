@@ -59,7 +59,7 @@ PID_t Turn ={
     .Kp=1.8,    // 恢复为较温和的比例
     .Ki=0.0,    
     .Kd=1.5,    // 保留适度微分阻尼
-    .OutMax=100, .OutMin=-100, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
+    .OutMax=150, .OutMin=-150, // 核心修改：死死卡住最大允许目标底盘转速，不让它顶到PWM40上限限制速度环暴走
 	};
 PID_t Straight ={
     .Kp=3.0,    
@@ -396,8 +396,11 @@ void Turn_In_Place(float target_angle)
 
     // 6. 将转向输出给到左右轮 (原地转弯：左轮和右轮互为反向)
     // 这里的极性 (谁为正谁为负) 取决于你的陀螺仪正方向
-    Left_Speed = -Turn_Out; 
-    Right_Speed = Turn_Out; 
+    
+        
+        Left_Speed = -Turn_Out; 
+        Right_Speed = Turn_Out; 
+    
     //printf("Turn_Out:%.2f  \n", Turn_Out);
 	// 7. 退出条件：进入小误差区后需稳定若干个控制周期，避免刚好掠过目标角
 	if((real_diff > -1.0f) && (real_diff < 1.0f))
