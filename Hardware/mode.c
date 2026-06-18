@@ -300,19 +300,29 @@ void mode_2(void)
     static uint16_t cooldown_cnt = 0;          // 转弯后冷却计时，避免立刻重复触发。
     static float straight_target_angle = 0.0f; // 触发转弯前锁定的直行航向。
     static float turn_target_angle = 0.0f;     // 需要转到的目标航向。
+    static float last_good_yaw = 0.0f;         // 循迹居中时记录的稳定航向，避免边线触发瞬间车身歪斜。
+    static uint8_t last_good_yaw_valid = 0U;
     static uint16_t lap_count = 0;             // 圈数计数。
     Gyro_Struct *JY61P_Data = get_angle();
     float current_yaw = JY61P_Data->z;
+
+    if (!last_good_yaw_valid) {
+        last_good_yaw = current_yaw;
+        last_good_yaw_valid = 1U;
+    }
 
     switch (state) {
         case 0:
             // 正常循迹；左侧探头连续检测到黑线后，进入短直行阶段。A-B
             Xunji_Speed();
             stable_cnt++;
+            if ((digital(4) || digital(5)) && !digital(1) && !digital(8)) {
+                last_good_yaw = current_yaw;
+            }
             if (stable_cnt>0 && (digital(1))) {
                 left_black_cnt++;
                 if (left_black_cnt > 0) {
-                    straight_target_angle = current_yaw;
+                    straight_target_angle = last_good_yaw;
                     state = 1;
                     left_black_cnt = 0;
                     stable_cnt = 0;
